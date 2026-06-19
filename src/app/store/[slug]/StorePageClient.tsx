@@ -613,9 +613,84 @@ export function StorePageClient({ store, coupons, similarCoupons }: Props) {
               )}
             </div>
           </div>
+
+          {/* SEO CONTENT SECTION — only rendered when content_status === 'approved' */}
+          {store.content_status === 'approved' && store.content_body && (
+            <StoreContentSection store={store} />
+          )}
+
         </div>
 
       </div>
     </>
+  )
+}
+
+// ─── SEO content section (bottom of page) ────────────────────────────────────
+function StoreContentSection({ store }: { store: Store }) {
+  const body = store.content_body!
+  const [openFaq, setOpenFaq] = useState<Record<number, boolean>>({})
+
+  function renderWithLinks(text: string) {
+    const parts = text.split(/(\[\[(?:store|category):[^\]]+\]\])/g)
+    return parts.map((part, i) => {
+      const m = part.match(/\[\[(store|category):([^|]+)\|([^\]]+)\]\]/)
+      if (m) {
+        const [, type, slug, name] = m
+        const href = type === 'store' ? `/store/${slug}/` : `/coupon-category/${slug}/`
+        return <Link key={i} href={href} style={{ color:'#38bdf8', textDecoration:'underline' }}>{name}</Link>
+      }
+      return <span key={i}>{part}</span>
+    })
+  }
+
+  return (
+    <div style={{ marginTop:40, borderTop:'1px solid rgba(255,255,255,.06)', paddingTop:36 }}>
+      {/* Intro description */}
+      {body.description && (
+        <p style={{ fontSize:14, color:'rgba(255,255,255,.65)', lineHeight:1.75, marginBottom:28, maxWidth:760 }}>
+          {renderWithLinks(body.description)}
+        </p>
+      )}
+
+      {/* H2 sections */}
+      {body.h2_sections?.map((s, i) => (
+        <div key={i} style={{ marginBottom:24 }}>
+          <h2 style={{ fontSize:17, fontWeight:800, color:'#fff', letterSpacing:'-.02em', marginBottom:10 }}>
+            {s.heading}
+          </h2>
+          <p style={{ fontSize:13.5, color:'rgba(255,255,255,.6)', lineHeight:1.75 }}>
+            {renderWithLinks(s.content)}
+          </p>
+        </div>
+      ))}
+
+      {/* FAQ accordion */}
+      {body.faqs?.length > 0 && (
+        <div style={{ marginTop:8 }}>
+          <h3 style={{ fontSize:15, fontWeight:800, color:'#fff', letterSpacing:'-.01em', marginBottom:14 }}>
+            Questions fréquentes — {store.name}
+          </h3>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {body.faqs.map((f, i) => (
+              <div key={i} style={{ background:'rgba(255,255,255,.03)', border:'1px solid rgba(255,255,255,.07)', borderRadius:14, overflow:'hidden' }}>
+                <button
+                  onClick={() => setOpenFaq(prev => ({ ...prev, [i]: !prev[i] }))}
+                  style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'14px 18px', background:'none', border:'none', cursor:'pointer', textAlign:'left' }}
+                >
+                  <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,.85)' }}>{f.question}</span>
+                  <IconChevDown open={!!openFaq[i]} />
+                </button>
+                {openFaq[i] && (
+                  <div style={{ padding:'0 18px 14px', fontSize:13, color:'rgba(255,255,255,.55)', lineHeight:1.7 }}>
+                    {renderWithLinks(f.answer)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

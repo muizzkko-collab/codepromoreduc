@@ -132,12 +132,28 @@ export default async function StorePage({ params }: Props) {
     })),
   } : null
 
+  // FAQPage JSON-LD — only when content is approved and has FAQs
+  const faqJsonLd = (store.content_status === 'approved' && store.content_body?.faqs?.length)
+    ? {
+        '@context': 'https://schema.org',
+        '@type':    'FAQPage',
+        mainEntity: store.content_body.faqs.map((f: { question: string; answer: string }) => ({
+          '@type': 'Question',
+          name:    f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      }
+    : null
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs, siteUrl)) }} />
       {offersJsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offersJsonLd) }} />
+      )}
+      {faqJsonLd && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       )}
       <StorePageClient store={store} coupons={coupons} similarCoupons={similarCoupons} />
     </>

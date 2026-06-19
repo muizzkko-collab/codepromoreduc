@@ -94,6 +94,7 @@ export const t = {
     permSiteContent: 'Contenu du site (carrousel, statistiques)',
     heroSlides: 'Carrousel Hero',
     siteStats: 'Statistiques affichées',
+    seoContent: 'Contenu SEO',
   },
   en: {
     dashboard: 'Dashboard',
@@ -188,5 +189,6 @@ export const t = {
     permSiteContent: 'Site content (carousel, stats)',
     heroSlides: 'Hero carousel',
     siteStats: 'Displayed stats',
+    seoContent: 'SEO Content',
   },
 } as const

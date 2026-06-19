@@ -1,0 +1,40 @@
+name: Weekly Store Content Generation
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'  # Monday 4am UTC
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: 'Number of stores to generate (50-100)'
+        required: false
+        default: '75'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Trigger content generation batch
+        run: |
+          BATCH_SIZE="${{ github.event.inputs.batch_size || '75' }}"
+          echo "Generating content for ${BATCH_SIZE} stores..."
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST https://codepromoreduc.fr/api/seo/generate-batch \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"batchSize\": ${BATCH_SIZE}}" \
+            --max-time 1200)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -1)
+
+          echo "HTTP Status: ${HTTP_CODE}"
+          echo "Response: ${BODY}"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Generation failed with status ${HTTP_CODE}"
+            exit 1
+          fi
