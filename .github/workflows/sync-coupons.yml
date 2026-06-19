@@ -10,6 +10,6 @@ jobs:
     steps:
       - name: Trigger Awin sync
         run: |
-          curl -X POST https://codepromoreduc.fr/api/cron/sync-coupons \
+          curl -X GET https://codepromoreduc.fr/api/cron/sync-coupons \
           -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
           -f
