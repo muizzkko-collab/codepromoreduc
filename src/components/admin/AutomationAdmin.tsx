@@ -20,6 +20,19 @@ interface StoreSyncLog {
   error_msg: string | null; created_at: string
 }
 
+type Network = 'awin' | 'tradedoubler' | 'kwanko' | 'effiliation'
+
+interface NetworkSyncResult {
+  network:     Network
+  added:       number
+  updated:     number
+  deactivated: number
+  stores:      number
+  errors:      number
+  duration_s:  string
+  error:       string | null
+}
+
 interface Props {
   syncLogs:  SyncLog[]
   storeLogs: StoreSyncLog[]
@@ -29,32 +42,49 @@ interface Props {
   }
 }
 
+const NETWORKS: { key: Network; label: string; color: string }[] = [
+  { key: 'awin',         label: 'Awin',         color: 'bg-blue-100 text-blue-700'   },
+  { key: 'tradedoubler', label: 'Tradedoubler',  color: 'bg-orange-100 text-orange-700' },
+  { key: 'kwanko',       label: 'Kwanko',        color: 'bg-purple-100 text-purple-700' },
+  { key: 'effiliation',  label: 'Effiliation',   color: 'bg-green-100 text-green-700'  },
+]
+
 export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
   const { tr } = useLang()
-  const [syncing, setSyncing]       = useState(false)
-  const [message, setMessage]       = useState<string | null>(null)
-  const [activeTab, setActiveTab]   = useState<'overview' | 'stores' | 'logs'>('overview')
+  const [syncing, setSyncing]               = useState(false)
+  const [networkSyncing, setNetworkSyncing] = useState<Network | null>(null)
+  const [message, setMessage]               = useState<string | null>(null)
+  const [lastResults, setLastResults]       = useState<NetworkSyncResult[] | null>(null)
+  const [activeTab, setActiveTab]           = useState<'overview' | 'stores' | 'logs'>('overview')
 
-  const last     = syncLogs.find(l => l.sync_type === 'awin') ?? syncLogs[0]
-  const lastScrape = syncLogs.find(l => l.sync_type === 'scraper')
-
-  const added24h = syncLogs.filter(inLast24h).reduce((s, l) => s + (l.coupons_added ?? 0), 0)
-
+  const last        = syncLogs.find(l => l.sync_type === 'awin') ?? syncLogs[0]
+  const lastScrape  = syncLogs.find(l => l.sync_type === 'scraper')
+  const added24h    = syncLogs.filter(inLast24h).reduce((s, l) => s + (l.coupons_added ?? 0), 0)
   const failedStores  = storeLogs.filter(l => l.status === 'error')
   const successStores = storeLogs.filter(l => l.status === 'success')
 
-  async function handleSync() {
-    setSyncing(true); setMessage(null)
+  async function doSync(network?: Network) {
+    const qs = network ? `?network=${network}` : ''
+    if (network) setNetworkSyncing(network)
+    else setSyncing(true)
+    setMessage(null); setLastResults(null)
+
     try {
-      const res  = await fetch('/api/admin/sync', { method: 'POST' })
+      const res  = await fetch(`/api/admin/sync${qs}`, { method: 'POST' })
       const json = await res.json().catch(() => ({}))
-      setMessage(res.ok
-        ? `✓ Sync terminée : ${json.added ?? 0} ajoutés, ${json.removed ?? 0} désactivés`
-        : `Erreur : ${json.error ?? 'inconnue'}`)
+
+      if (res.ok && json.results) {
+        const results: NetworkSyncResult[] = json.results
+        setLastResults(results)
+        const totals = results.reduce((a, r) => ({ added: a.added + r.added, deactivated: a.deactivated + r.deactivated }), { added: 0, deactivated: 0 })
+        setMessage(`✓ Sync terminée : ${totals.added} ajoutés, ${totals.deactivated} désactivés`)
+      } else {
+        setMessage(`Erreur : ${json.error ?? 'inconnue'}`)
+      }
     } catch {
       setMessage('Erreur réseau lors du déclenchement.')
     } finally {
-      setSyncing(false)
+      setSyncing(false); setNetworkSyncing(null)
     }
   }
 
@@ -63,12 +93,12 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-navy">{tr.automation}</h1>
         <button
-          onClick={handleSync}
-          disabled={syncing}
+          onClick={() => doSync()}
+          disabled={syncing || !!networkSyncing}
           className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
         >
           <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Sync en cours…' : 'Sync maintenant'}
+          {syncing ? 'Sync en cours…' : 'Sync tous les réseaux'}
         </button>
       </div>
 
@@ -80,13 +110,65 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Zap}         label="Boutiques Awin"     value={String(stats.awinStores)}    color="bg-blue-100 text-blue-600" />
-        <StatCard icon={Globe}       label="Boutiques scraper"  value={String(stats.scraperStores)} color="bg-purple-100 text-purple-600" />
-        <StatCard icon={TrendingUp}  label="Ajoutés aujourd'hui" value={`+${stats.addedToday}`}     color="bg-green-100 text-green-600" />
+        <StatCard icon={Zap}         label="Boutiques Awin"      value={String(stats.awinStores)}    color="bg-blue-100 text-blue-600" />
+        <StatCard icon={Globe}       label="Boutiques scraper"   value={String(stats.scraperStores)} color="bg-purple-100 text-purple-600" />
+        <StatCard icon={TrendingUp}  label="Ajoutés aujourd'hui" value={`+${stats.addedToday}`}      color="bg-green-100 text-green-600" />
         <StatCard icon={TrendingDown} label="Expirés aujourd'hui" value={String(stats.expiredToday)} color="bg-orange-100 text-orange-600" />
       </div>
 
-      {/* Last sync info */}
+      {/* Per-network status cards */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Réseaux affiliés</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {NETWORKS.map(({ key, label, color }) => {
+            const lastLog  = syncLogs.find(l => l.sync_type === key || l.sync_type?.includes(key))
+            const liveResult = lastResults?.find(r => r.network === key)
+            const isSyncing  = networkSyncing === key || (syncing)
+
+            return (
+              <div key={key} className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${color}`}>{label}</span>
+                  {lastLog && <StatusBadge status={lastLog.status} />}
+                </div>
+
+                {liveResult ? (
+                  <div className="text-xs space-y-0.5">
+                    <p className="text-green-600 font-medium">+{liveResult.added} ajoutés</p>
+                    <p className="text-blue-500">{liveResult.updated} mis à jour</p>
+                    <p className="text-orange-500">-{liveResult.deactivated} désactivés</p>
+                    <p className="text-gray-400">{liveResult.stores} boutiques · {liveResult.duration_s}s</p>
+                    {liveResult.error && <p className="text-red-500 truncate">{liveResult.error}</p>}
+                  </div>
+                ) : lastLog ? (
+                  <div className="text-xs text-gray-500 space-y-0.5">
+                    <p>{formatDate(lastLog.created_at)}</p>
+                    <p>+{lastLog.coupons_added ?? 0} · -{lastLog.coupons_removed ?? 0}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">Jamais synchronisé</p>
+                )}
+
+                {key === 'kwanko' ? (
+                  <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                    Endpoint API non configuré
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => doSync(key)}
+                    disabled={isSyncing}
+                    className="w-full text-xs py-1.5 rounded-lg border border-gray-200 hover:border-primary hover:text-primary disabled:opacity-40 transition-colors font-medium"
+                  >
+                    {isSyncing ? '…' : `Sync ${label}`}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Last sync overview cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SyncCard
           title="Dernière sync Awin"
@@ -121,7 +203,7 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab === 'overview' ? 'Vue d\'ensemble' : tab === 'stores' ? `Boutiques (${storeLogs.length})` : 'Historique'}
+              {tab === 'overview' ? "Vue d'ensemble" : tab === 'stores' ? `Boutiques (${storeLogs.length})` : 'Historique'}
             </button>
           ))}
         </div>
@@ -201,8 +283,11 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
                       <td className="px-5 py-2.5 text-xs text-gray-500 whitespace-nowrap">{formatDate(log.created_at)}</td>
                       <td className="px-5 py-2.5">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          log.sync_type === 'awin'    ? 'bg-blue-100 text-blue-700'
-                        : log.sync_type === 'scraper' ? 'bg-purple-100 text-purple-700'
+                          log.sync_type === 'awin'         ? 'bg-blue-100 text-blue-700'
+                        : log.sync_type === 'tradedoubler' ? 'bg-orange-100 text-orange-700'
+                        : log.sync_type === 'kwanko'       ? 'bg-purple-100 text-purple-700'
+                        : log.sync_type === 'effiliation'  ? 'bg-green-100 text-green-700'
+                        : log.sync_type === 'scraper'      ? 'bg-purple-100 text-purple-700'
                         : 'bg-gray-100 text-gray-500'}`}>
                           {log.sync_type ?? 'manual'}
                         </span>
