@@ -7,7 +7,7 @@ export async function upsertStore(payload: {
   name: string; slug: string
   affiliate_url: string | null; meta_title: string | null; meta_description: string | null
   is_featured: boolean; is_active: boolean; logo_url?: string | null
-  popup_banner_url?: string | null
+  popup_banner_url?: string | null; awin_merchant_id?: number | null
 }) {
   try { await requirePermission('stores') } catch (e) { return { data: null, error: (e as Error).message } }
 

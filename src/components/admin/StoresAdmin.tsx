@@ -1,15 +1,20 @@
 'use client'
-import { useState, useMemo, useRef, useTransition } from 'react'
+import { useState, useMemo, useRef, useTransition, useEffect } from 'react'
 import { useLang } from './LangContext'
 import { StoreLogo } from '@/components/StoreLogo'
-import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link } from 'lucide-react'
 import { upsertStore, deleteStore, toggleStoreField, uploadStoreLogo } from '@/app/actions/stores'
 
 interface Store {
   id: string; name: string; slug: string; logo_url: string | null
   affiliate_url: string | null; meta_title: string | null; meta_description: string | null
   coupon_count: number; is_featured: boolean; is_active: boolean; click_count: number
-  popup_banner_url: string | null
+  popup_banner_url: string | null; awin_merchant_id?: number | null
+}
+
+interface AwinResult {
+  awin_id: number; name: string; logo_url: string | null
+  affiliate_url: string | null; display_url: string | null
 }
 
 interface Props { initialStores: Store[] }
@@ -20,21 +25,62 @@ function slugify(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-const EMPTY: Partial<Store> = { name: '', slug: '', affiliate_url: '', meta_title: '', meta_description: '', is_featured: false, is_active: true, popup_banner_url: '' }
+const EMPTY: Partial<Store> = { name: '', slug: '', affiliate_url: '', meta_title: '', meta_description: '', is_featured: false, is_active: true, popup_banner_url: '', awin_merchant_id: null }
 
 export function StoresAdmin({ initialStores }: Props) {
   const { tr } = useLang()
   const [isPending, startTransition] = useTransition()
 
-  const [stores, setStores]       = useState<Store[]>(initialStores)
-  const [search, setSearch]       = useState('')
-  const [page, setPage]           = useState(0)
-  const [panelOpen, setPanelOpen] = useState(false)
-  const [editing, setEditing]     = useState<Partial<Store> & { id?: string }>(EMPTY)
-  const [saving, setSaving]       = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [logoFile, setLogoFile]   = useState<File | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [stores, setStores]             = useState<Store[]>(initialStores)
+  const [search, setSearch]             = useState('')
+  const [page, setPage]                 = useState(0)
+  const [panelOpen, setPanelOpen]       = useState(false)
+  const [editing, setEditing]           = useState<Partial<Store> & { id?: string }>(EMPTY)
+  const [saving, setSaving]             = useState(false)
+  const [saveError, setSaveError]       = useState<string | null>(null)
+  const [logoFile, setLogoFile]         = useState<File | null>(null)
+  const fileRef                         = useRef<HTMLInputElement>(null)
+
+  // Awin search state (for new stores)
+  const [awinQuery, setAwinQuery]       = useState('')
+  const [awinResults, setAwinResults]   = useState<AwinResult[]>([])
+  const [awinLoading, setAwinLoading]   = useState(false)
+  const [awinConfirmed, setAwinConfirmed] = useState<AwinResult | null>(null)
+  const awinTimer                       = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!awinQuery || awinQuery.length < 2) { setAwinResults([]); return }
+    if (awinTimer.current) clearTimeout(awinTimer.current)
+    awinTimer.current = setTimeout(async () => {
+      setAwinLoading(true)
+      try {
+        const res = await fetch('/api/admin/awin-search?q=' + encodeURIComponent(awinQuery))
+        const json = await res.json()
+        setAwinResults(json.results ?? [])
+      } catch { setAwinResults([]) }
+      finally { setAwinLoading(false) }
+    }, 400)
+  }, [awinQuery])
+
+  function confirmAwin(r: AwinResult) {
+    setAwinConfirmed(r)
+    setAwinResults([])
+    setAwinQuery(r.name)
+    // Pre-fill affiliate URL and logo if empty
+    setEditing(p => ({
+      ...p,
+      awin_merchant_id: r.awin_id,
+      affiliate_url: p.affiliate_url || r.affiliate_url || '',
+      logo_url: p.logo_url || r.logo_url || null,
+    }))
+  }
+
+  function clearAwin() {
+    setAwinConfirmed(null)
+    setAwinQuery('')
+    setAwinResults([])
+    setEditing(p => ({ ...p, awin_merchant_id: null }))
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -46,9 +92,9 @@ export function StoresAdmin({ initialStores }: Props) {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
   const pageStores = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
-  function openNew()    { setEditing(EMPTY); setLogoFile(null); setSaveError(null); setPanelOpen(true) }
-  function openEdit(s: Store) { setEditing({ ...s }); setLogoFile(null); setSaveError(null); setPanelOpen(true) }
-  function closePanel() { setPanelOpen(false); setEditing(EMPTY); setSaveError(null) }
+  function openNew()    { setEditing(EMPTY); setLogoFile(null); setSaveError(null); setAwinQuery(''); setAwinConfirmed(null); setAwinResults([]); setPanelOpen(true) }
+  function openEdit(s: Store) { setEditing({ ...s }); setLogoFile(null); setSaveError(null); setAwinQuery(s.awin_merchant_id ? '(lié — ID '+s.awin_merchant_id+')' : ''); setAwinConfirmed(null); setAwinResults([]); setPanelOpen(true) }
+  function closePanel() { setPanelOpen(false); setEditing(EMPTY); setSaveError(null); setAwinQuery(''); setAwinConfirmed(null); setAwinResults([]) }
 
   function handleSearch(q: string) { setSearch(q); setPage(0) }
 
@@ -57,16 +103,17 @@ export function StoresAdmin({ initialStores }: Props) {
     setSaving(true); setSaveError(null)
     try {
       const payload = {
-        id:               editing.id,
-        name:             editing.name!,
-        slug:             editing.slug!,
-        affiliate_url:    editing.affiliate_url || null,
-        meta_title:       editing.meta_title    || null,
-        meta_description: editing.meta_description || null,
-        is_featured:      editing.is_featured ?? false,
-        is_active:        editing.is_active    ?? true,
-        logo_url:         editing.logo_url ?? null,
-        popup_banner_url: editing.popup_banner_url || null,
+        id:                editing.id,
+        name:              editing.name!,
+        slug:              editing.slug!,
+        affiliate_url:     editing.affiliate_url || null,
+        meta_title:        editing.meta_title    || null,
+        meta_description:  editing.meta_description || null,
+        is_featured:       editing.is_featured ?? false,
+        is_active:         editing.is_active    ?? true,
+        logo_url:          editing.logo_url ?? null,
+        popup_banner_url:  editing.popup_banner_url || null,
+        awin_merchant_id:  editing.awin_merchant_id ?? null,
       }
 
       // Upload logo first if a new file was chosen
@@ -236,6 +283,70 @@ export function StoresAdmin({ initialStores }: Props) {
                   {saveError}
                 </div>
               )}
+
+              {/* Awin advertiser link (new store only, or show existing link) */}
+              {!editing.id ? (
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-blue-700 text-xs font-semibold uppercase tracking-wide">
+                    <Link className="h-3.5 w-3.5" />
+                    Lier à un annonceur Awin (optionnel)
+                  </div>
+
+                  {awinConfirmed ? (
+                    <div className="flex items-center gap-3 bg-white border border-green-200 rounded-lg px-3 py-2">
+                      {awinConfirmed.logo_url && (
+                        <img src={awinConfirmed.logo_url} alt="" className="h-6 w-6 object-contain" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-green-700">{awinConfirmed.name}</p>
+                        <p className="text-xs text-gray-400">ID Awin: {awinConfirmed.awin_id}</p>
+                      </div>
+                      <button onClick={clearAwin} className="text-gray-400 hover:text-red-500 text-xs">Retirer</button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        value={awinQuery}
+                        onChange={e => setAwinQuery(e.target.value)}
+                        placeholder="Rechercher un annonceur Awin…"
+                        className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-300"
+                      />
+                      {awinLoading && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-blue-400">…</span>
+                      )}
+                      {awinResults.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 bg-white border border-blue-100 rounded-xl shadow-xl mt-1 max-h-56 overflow-y-auto">
+                          {awinResults.map(r => (
+                            <button
+                              key={r.awin_id}
+                              onClick={() => confirmAwin(r)}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-blue-50 text-left border-b border-gray-100 last:border-0"
+                            >
+                              {r.logo_url
+                                ? <img src={r.logo_url} alt="" className="h-5 w-5 object-contain flex-shrink-0" />
+                                : <div className="h-5 w-5 bg-blue-100 rounded flex-shrink-0" />
+                              }
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-navy truncate">{r.name}</p>
+                                <p className="text-xs text-gray-400">{r.display_url ?? ''} · ID {r.awin_id}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-blue-500">
+                    Lier un annonceur Awin permettra la synchronisation automatique des coupons chaque nuit.
+                  </p>
+                </div>
+              ) : editing.awin_merchant_id ? (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
+                  <Link className="h-4 w-4 text-green-600" />
+                  <span className="text-green-700 font-medium">Lié à Awin</span>
+                  <span className="text-gray-400 text-xs">(ID {editing.awin_merchant_id})</span>
+                </div>
+              ) : null}
 
               <Field label={tr.name} required>
                 <input

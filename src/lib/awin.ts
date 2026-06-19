@@ -62,6 +62,41 @@ export async function getStoreCoupons(merchantId: number): Promise<AwinPromotion
   return Array.isArray(data) ? data : []
 }
 
+// Fetch promotions for multiple advertiser IDs in one call (batched to avoid URL length limits)
+export async function getBulkPromotions(
+  merchantIds: number[],
+  batchSize = 50
+): Promise<AwinPromotion[]> {
+  const all: AwinPromotion[] = []
+  for (let i = 0; i < merchantIds.length; i += batchSize) {
+    const batch = merchantIds.slice(i, i + batchSize)
+    const ids = batch.join(',')
+    const res = await fetch(
+      `${AWIN_BASE}/publishers/${PUB_ID}/promotions?countryCode=FR&advertiserId=${ids}&promotionType=voucher,deal`,
+      { headers: authHeaders() }
+    )
+    if (!res.ok) {
+      console.warn(`Awin bulk fetch error: ${res.status} for batch starting at ${i}`)
+      continue
+    }
+    const data = await res.json()
+    all.push(...(Array.isArray(data) ? data : []))
+    // Small delay between batches
+    if (i + batchSize < merchantIds.length) await new Promise(r => setTimeout(r, 200))
+  }
+  return all
+}
+
+export async function searchProgrammes(query: string): Promise<AwinProgramme[]> {
+  const all = await getAllMerchants()
+  const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
+  const q = norm(query)
+  if (!q) return all.slice(0, 20)
+  return all
+    .filter(p => norm(p.name).includes(q) || q.includes(norm(p.name)))
+    .slice(0, 15)
+}
+
 export async function getStoreByName(name: string): Promise<AwinProgramme | null> {
   const merchants = await getAllMerchants()
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
