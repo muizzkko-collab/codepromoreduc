@@ -1,0 +1,15 @@
+name: Nightly Coupon Sync
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Awin sync
+        run: |
+          curl -X GET https://codepromoreduc.fr/api/cron/sync-coupons \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          -f
