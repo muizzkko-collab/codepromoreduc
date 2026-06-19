@@ -34,13 +34,9 @@ export default async function CategoryPage({ params }: Props) {
     .eq('category_id', cat.id)
     .limit(500)
 
-  // Fallback: all active stores if junction is empty
   let stores: Store[] = []
   if (scData && scData.length > 0) {
     stores = scData.map((r: { store: unknown }) => r.store as Store).filter(s => s?.is_active)
-  } else {
-    const { data: fallback } = await supabase.from('stores').select('*').eq('is_active', true).order('name').limit(200)
-    stores = (fallback ?? []) as Store[]
   }
 
   const siteUrl = getSiteUrl()

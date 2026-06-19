@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const monthYear = getCurrentMonthYear()
   const title = store.meta_title
-    || `Code Promo ${store.name} → Réductions Valides ${monthYear} | codepromoreduc.fr`
+    || `Code Promo ${store.name} → Réductions Valides ${monthYear}`
   const desc  = store.meta_description
     || `Retrouvez tous les codes promo et réductions ${store.name} valides en ${monthYear}. Économisez sur vos achats avec codepromoreduc.fr`
   const siteUrl = getSiteUrl()
