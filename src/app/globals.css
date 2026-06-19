@@ -2,26 +2,300 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #060810;
+    --foreground: #ffffff;
+    --primary: #38bdf8;
+    --primary-dark: #0ea5e9;
+    --navy: #060810;
+    --section-bg: #0b0d12;
+    --border: rgba(255, 255, 255, 0.08);
+    --radius: 0.5rem;
   }
+  * { @apply border-white/10; }
+  body {
+    @apply text-white antialiased;
+    background-color: #060810;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  /* Hide scrollbar for filter tabs on mobile */
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Ambient orb animations ── */
+@keyframes orb-a {
+  0%,100% { transform: translateY(0) scale(1); opacity: .75; }
+  50%      { transform: translateY(-90px) scale(1.14); opacity: 1; }
+}
+@keyframes orb-b {
+  0%,100% { transform: translateY(0) scale(1); opacity: .6; }
+  50%      { transform: translateY(70px) scale(1.1); opacity: .9; }
+}
+@keyframes orb-c {
+  0%,100% { transform: translate(0,0) scale(1); opacity: .5; }
+  33%      { transform: translate(50px,-60px) scale(1.18); opacity: .8; }
+  66%      { transform: translate(-30px,40px) scale(.92); opacity: .6; }
+}
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes live-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.6; transform:scale(.9); }
+}
+
+/* ── Store page animations ── */
+@keyframes cpr-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.55; transform:scale(.88); }
+}
+
+/* ── Store page layout ── */
+.store-main {
+  padding: 32px 28px 80px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.store-two-col {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 32px;
+  align-items: start;
+}
+.store-sidebar { position: sticky; top: 90px; }
+.store-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 330px;
+  align-items: flex-start;
+  gap: 40px;
+}
+.store-header-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 330px; }
+.verify-grid   { display: grid; grid-template-columns: repeat(3,1fr); gap: 28px; }
+.store-about-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+.similar-grid  { display: grid; gap: 12px; }
+
+/* Coupon card body — row on desktop */
+.coupon-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.coupon-left  { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; }
+.coupon-badge {
+  width: 88px; height: 88px; border-radius: 16px;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; flex-shrink: 0; text-align: center;
+}
+.coupon-right {
+  display: flex; flex-direction: column;
+  align-items: flex-end; gap: 8px;
+  width: 200px; flex-shrink: 0;
+}
+.coupon-cta {
+  width: 100%; padding: 13px 16px; border-radius: 14px;
+  font-weight: 800; font-size: 11.5px; text-transform: uppercase;
+  letter-spacing: .06em; display: flex; align-items: center;
+  justify-content: center; gap: 8px; cursor: pointer;
+  backdrop-filter: blur(18px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+  transition: all 300ms cubic-bezier(.4,0,.2,1);
+  border: none;
+}
+.coupon-expiry { display: flex; gap: 8px; font-size: 10px; color: rgba(255,255,255,.45); font-weight: 600; }
+
+/* ── Homepage button hover effects ── */
+.hp-btn {
+  transition: all 280ms cubic-bezier(.4,0,.2,1);
+}
+.hp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(56,189,248,.22);
+  border-color: rgba(56,189,248,.45) !important;
+  color: #38bdf8 !important;
+}
+.hp-btn:active { transform: scale(.97) translateY(0); }
+
+.hp-btn-primary {
+  transition: all 280ms cubic-bezier(.4,0,.2,1);
+}
+.hp-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(14,165,233,.45);
+  filter: brightness(1.08);
+}
+.hp-btn-primary:active { transform: scale(.97) translateY(0); }
+
+.hp-store-card {
+  transition: all 300ms cubic-bezier(.4,0,.2,1);
+}
+.hp-store-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(56,189,248,.3) !important;
+  background: rgba(56,189,248,.06) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,.4), 0 0 0 1px rgba(56,189,248,.12);
+}
+
+/* Détails button transition */
+.coupon-details-btn {
+  background: transparent;
+  border: 0;
+  color: rgba(255,255,255,.45);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color .2s ease, background .2s ease;
+  box-shadow: none;
+}
+.coupon-details-btn:hover {
+  color: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.07);
+}
+
+/* Hover effects */
+.cpr-card-hover {
+  transition: transform 300ms cubic-bezier(.4,0,.2,1), box-shadow 300ms ease !important;
+}
+.cpr-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(56,189,248,.09), 0 0 0 1px rgba(56,189,248,.1) !important;
+}
+.cpr-featured:hover {
+  box-shadow: 0 8px 28px rgba(245,158,11,.12), 0 0 0 1px rgba(245,158,11,.18) !important;
+}
+.cpr-similar-hover:hover {
+  background: rgba(56,189,248,.1) !important;
+  border-color: rgba(56,189,248,.3) !important;
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.35), 0 0 0 1px rgba(56,189,248,.15) !important;
+}
+.cpr-faq-hover:hover    { background: rgba(255,255,255,.04) !important; border-color: rgba(56,189,248,.18) !important; }
+.cpr-brand-hover:hover  { border-color: rgba(56,189,248,.3) !important; background: rgba(255,255,255,.04) !important; transform: translateY(-4px); }
+.cpr-copy-btn:hover     { transform: scale(1.04) translateY(-4px); box-shadow: 0 8px 24px rgba(56,189,248,.4) !important; }
+.cpr-modal-close:hover  { background: rgba(255,255,255,.1) !important; color: #fff !important; }
+
+/* ── Mobile overrides (≤ 767px) ── */
+@media (max-width: 767px) {
+  .store-main { padding: 16px 14px 60px; }
+  .store-two-col { grid-template-columns: 1fr !important; }
+  .store-sidebar { position: static !important; }
+
+  /* Hidden sections on mobile */
+  .hide-mobile { display: none !important; }
+
+  /* Store header: compact */
+  .store-header-banner { padding: 16px !important; margin-bottom: 14px !important; border-radius: 18px !important; }
+  .store-header-grid   { grid-template-columns: 1fr !important; gap: 0 !important; }
+  .store-header-title  { font-size: 18px !important; margin-bottom: 4px !important; }
+  .store-header-subtitle { font-size: 9px !important; margin-bottom: 0 !important; }
+  .store-header-stats  { display: none !important; }
+
+  /* Coupon cards: stack vertically */
+  .coupon-card-body { flex-direction: column !important; align-items: stretch !important; gap: 14px !important; }
+  .coupon-left  { gap: 12px !important; }
+  .coupon-badge { width: 64px !important; height: 64px !important; border-radius: 12px !important; }
+  .coupon-right { width: 100% !important; align-items: stretch !important; }
+  .coupon-cta   { font-size: 11px !important; padding: 12px 14px !important; }
+  .coupon-expiry { justify-content: center !important; }
+  .coupon-card  { padding: 16px !important; border-radius: 16px !important; }
+
+  /* Grids */
+  .verify-grid      { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .store-about-grid { grid-template-columns: 1fr !important; }
+  .similar-grid     { grid-template-columns: repeat(3,1fr) !important; }
+  .glass-section    { padding: 20px 18px !important; border-radius: 16px !important; }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .text-primary { color: #38bdf8; }
+  .bg-primary { background-color: #38bdf8; }
+  .text-navy { color: #080a0f; }
+  .bg-navy { background-color: #080a0f; }
+  .bg-section { background-color: #0c1017; }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(56, 189, 248, 0.3);
+    transform: translateY(-4px);
+  }
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  /* Primary liquid-glass CTA: gradient fill + inset highlight + outer shadow */
+  .btn-glow {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+    box-shadow: inset 0 1.5px 2px rgba(255,255,255,0.25), 0 10px 35px rgba(0,0,0,0.37);
+    transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.2s ease;
+  }
+  .btn-glow:hover {
+    box-shadow: 0 0 25px rgba(14,165,233,0.35);
+  }
+  .btn-glow:active {
+    transform: scale(0.96);
+  }
+
+  /* Secondary liquid-glass button: translucent + backdrop blur, no fill color */
+  .btn-glass {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 6px 20px rgba(0,0,0,0.3);
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .btn-glass:hover {
+    background: rgba(14,165,233,0.15);
+    border-color: rgba(56,189,248,0.4);
+    color: #38bdf8;
+    box-shadow: 0 0 15px rgba(14,165,233,0.25);
+  }
+  .btn-glass:active {
+    transform: scale(0.95);
+  }
+
+  /* Sheen swipe overlay — add a child <span class="sheen-effect"> inside a button */
+  .sheen-effect {
+    position: absolute;
+    inset: 0;
+    width: 33%;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.15), transparent);
+    transform: skewX(12deg);
+    animation: sheen 3.5s infinite linear;
+  }
+  @keyframes sheen {
+    0%   { transform: translateX(-200%) skewX(12deg); }
+    100% { transform: translateX(300%) skewX(12deg); }
+  }
+
+  /* Admin panel keeps a light surface regardless of public site theme */
+  .admin-surface { @apply bg-gray-50 text-gray-800; }
+  .input-base {
+    @apply w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow text-gray-800 bg-white;
   }
 }

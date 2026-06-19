@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/expire-coupons",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-coupons",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/scrape-coupons",
+      "schedule": "0 3 * * 0"
+    }
+  ]
+}
