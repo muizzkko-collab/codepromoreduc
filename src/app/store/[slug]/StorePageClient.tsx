@@ -128,6 +128,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
   const [filter, setFilter] = useState<Filter>('ALL')
   const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({})
   const [openFaqs, setOpenFaqs] = useState<Record<number, boolean>>({})
+  const [descExpanded, setDescExpanded] = useState(false)
 
   const monthYear = getCurrentMonthYear()
   const sortFeaturedFirst = (arr: Coupon[]) => {
@@ -175,9 +176,17 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                     </p>
                     {/* Description — hidden on mobile */}
                     {store.description && (
-                      <p className="hide-mobile" style={{ fontSize:13, color:'rgba(255,255,255,.6)', margin:0, lineHeight:1.6, maxWidth:540 }}>
-                        {store.description}
-                      </p>
+                      <div className="hide-mobile" style={{ maxWidth:540 }}>
+                        <p style={{ fontSize:13, color:'rgba(255,255,255,.6)', margin:0, lineHeight:1.6, overflow:'hidden', display:'-webkit-box', WebkitBoxOrient:'vertical', WebkitLineClamp: descExpanded ? 'unset' as unknown as number : 3 }}>
+                          {store.description}
+                        </p>
+                        <button
+                          onClick={() => setDescExpanded(p => !p)}
+                          style={{ marginTop:6, fontSize:12, fontWeight:700, color:'#38bdf8', background:'none', border:'none', padding:0, cursor:'pointer', letterSpacing:'.01em' }}
+                        >
+                          {descExpanded ? 'Voir moins ↑' : 'Lire la suite ↓'}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -279,7 +288,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                               border: isTop ? '1px solid rgba(245,158,11,.35)' : '1px solid rgba(56,189,248,.22)',
                             }}
                           >
-                            <span style={{ fontSize: (extractDiscount(coupon).length) > 8 ? 13 : 18, fontWeight:900, color: isTop ? '#fcd34d' : '#fff', letterSpacing:'-.03em', lineHeight:1 }}>
+                            <span style={{ fontSize: (extractDiscount(coupon).length) > 8 ? '1.125rem' : '1.125rem', fontWeight:900, color: isTop ? '#fcd34d' : '#fff', letterSpacing:'-.03em', lineHeight:1 }}>
                               {extractDiscount(coupon)}
                             </span>
                             <span style={{ fontSize:8, fontWeight:800, letterSpacing:'.15em', color:'rgba(255,255,255,.5)', marginTop:4, textTransform:'uppercase' }}>
@@ -297,7 +306,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                                 Vérifié
                               </span>
                             </div>
-                            <h3 style={{ fontSize:14, fontWeight:800, color:'#fff', margin:0, lineHeight:1.35, letterSpacing:'-.01em', wordBreak:'break-word' }}>
+                            <h3 style={{ fontSize:'1.125rem', fontWeight:800, color:'#fff', margin:0, lineHeight:1.35, letterSpacing:'-.01em', wordBreak:'break-word' }}>
                               {coupon.title}
                             </h3>
                           </div>
@@ -549,7 +558,17 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                   </div>
                 </div>
                 {store.description && (
-                  <p style={{ fontSize:13, color:'rgba(255,255,255,.62)', margin:'0 0 20px', lineHeight:1.7 }}>{store.description}</p>
+                  <div style={{ marginBottom:20 }}>
+                    <p style={{ fontSize:13, color:'rgba(255,255,255,.62)', margin:0, lineHeight:1.7, overflow:'hidden', display:'-webkit-box', WebkitBoxOrient:'vertical', WebkitLineClamp: descExpanded ? 'unset' as unknown as number : 3 }}>
+                      {store.description}
+                    </p>
+                    <button
+                      onClick={() => setDescExpanded(p => !p)}
+                      style={{ marginTop:6, fontSize:12, fontWeight:700, color:'#38bdf8', background:'none', border:'none', padding:0, cursor:'pointer', letterSpacing:'.01em' }}
+                    >
+                      {descExpanded ? 'Voir moins ↑' : 'Lire la suite ↓'}
+                    </button>
+                  </div>
                 )}
                 <div className="store-about-grid" style={{ marginBottom:0 }}>
                   {[

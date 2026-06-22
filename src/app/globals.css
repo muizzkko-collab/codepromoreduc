@@ -14,11 +14,15 @@
     --radius: 0.5rem;
   }
   * { @apply border-white/10; }
+  html {
+    overflow-x: hidden;
+  }
   body {
     @apply text-white antialiased;
     background-color: #060810;
     overflow-x: hidden;
     max-width: 100vw;
+    position: relative;
   }
   /* Hide scrollbar for filter tabs on mobile */
   .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -59,6 +63,9 @@
   padding: 32px 28px 80px;
   max-width: 1280px;
   margin: 0 auto;
+  /* prevent inline styles from overflowing on narrow viewports */
+  box-sizing: border-box;
+  width: 100%;
 }
 .store-two-col {
   display: grid;
@@ -98,7 +105,7 @@
 }
 .coupon-cta {
   width: 100%; padding: 13px 16px; border-radius: 14px;
-  font-weight: 800; font-size: 11.5px; text-transform: uppercase;
+  font-weight: 900; font-size: 11.5px; text-transform: uppercase;
   letter-spacing: .06em; display: flex; align-items: center;
   justify-content: center; gap: 8px; cursor: pointer;
   backdrop-filter: blur(18px);
@@ -183,9 +190,21 @@
 .cpr-copy-btn:hover     { transform: scale(1.04) translateY(-4px); box-shadow: 0 8px 24px rgba(56,189,248,.4) !important; }
 .cpr-modal-close:hover  { background: rgba(255,255,255,.1) !important; color: #fff !important; }
 
+/* ── Prevent ambient orbs from causing horizontal scroll ── */
+.orb-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
 /* ── Mobile overrides (≤ 767px) ── */
 @media (max-width: 767px) {
-  .store-main { padding: 16px 14px 60px; }
+  /* Core overflow fix */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .store-main { padding: 14px 12px 60px; }
   .store-two-col { grid-template-columns: 1fr !important; }
   .store-sidebar { position: static !important; }
 
@@ -193,26 +212,38 @@
   .hide-mobile { display: none !important; }
 
   /* Store header: compact */
-  .store-header-banner { padding: 16px !important; margin-bottom: 14px !important; border-radius: 18px !important; }
+  .store-header-banner { padding: 14px !important; margin-bottom: 12px !important; border-radius: 16px !important; }
   .store-header-grid   { grid-template-columns: 1fr !important; gap: 0 !important; }
-  .store-header-title  { font-size: 18px !important; margin-bottom: 4px !important; }
+  .store-header-title  { font-size: 17px !important; margin-bottom: 4px !important; }
   .store-header-subtitle { font-size: 9px !important; margin-bottom: 0 !important; }
   .store-header-stats  { display: none !important; }
 
-  /* Coupon cards: stack vertically */
-  .coupon-card-body { flex-direction: column !important; align-items: stretch !important; gap: 14px !important; }
-  .coupon-left  { gap: 12px !important; }
-  .coupon-badge { width: 64px !important; height: 64px !important; border-radius: 12px !important; }
+  /* Coupon cards: stack vertically, clamp to screen */
+  .coupon-card-body { flex-direction: column !important; align-items: stretch !important; gap: 12px !important; }
+  .coupon-left  { gap: 10px !important; }
+  .coupon-badge { width: 60px !important; height: 60px !important; border-radius: 12px !important; }
   .coupon-right { width: 100% !important; align-items: stretch !important; }
-  .coupon-cta   { font-size: 11px !important; padding: 12px 14px !important; }
+  .coupon-cta   { font-size: 11px !important; font-weight: 900 !important; padding: 12px 14px !important; }
   .coupon-expiry { justify-content: center !important; }
-  .coupon-card  { padding: 16px !important; border-radius: 16px !important; }
+  .coupon-card  { padding: 14px 12px !important; border-radius: 16px !important; max-width: 100% !important; overflow: hidden !important; }
 
   /* Grids */
   .verify-grid      { grid-template-columns: 1fr !important; gap: 16px !important; }
   .store-about-grid { grid-template-columns: 1fr !important; }
   .similar-grid     { grid-template-columns: repeat(3,1fr) !important; }
-  .glass-section    { padding: 20px 18px !important; border-radius: 16px !important; }
+  .glass-section    { padding: 18px 14px !important; border-radius: 16px !important; }
+
+  /* Homepage trust strip — full width, rounded rect on mobile */
+  .trust-strip { border-radius: 20px !important; }
+
+  /* Prevent any fixed-width child from overflowing */
+  .store-header-stats,
+  .store-header-grid > *,
+  .coupon-right,
+  .store-sidebar > * {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
 }
 
 @layer utilities {

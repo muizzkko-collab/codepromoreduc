@@ -169,7 +169,7 @@ export default async function HomePage() {
         <HomeStoreSearch stores={popularStores} />
 
         {/* Trust strip */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-6 mx-4 mt-8 sm:mt-11 mb-0 px-4 sm:px-9 py-4 sm:py-5 w-full max-w-2xl sm:max-w-none" style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.05)', borderRadius:'999px' }}>
+        <div className="trust-strip flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 sm:gap-6 mt-8 sm:mt-11 mb-0 px-4 sm:px-9 py-4 sm:py-5 w-full max-w-2xl" style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.05)', borderRadius:'999px', boxSizing:'border-box' }}>
           <div className="flex items-center gap-2.5 text-xs font-semibold" style={{ color:'rgba(255,255,255,.6)' }}>
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background:'#10b981', boxShadow:'0 0 8px #10b981', animation:'live-pulse 1.8s ease-in-out infinite', display:'inline-block' }} />
             <span><strong style={{ color:'#fff' }}>8 432</strong> codes vérifiés ces dernières 24h</span>

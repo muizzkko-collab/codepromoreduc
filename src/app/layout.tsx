@@ -37,10 +37,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="font-sans bg-navy text-white antialiased flex flex-col min-h-screen" suppressHydrationWarning>
         {!bare && (
           <>
-            <div className="fixed pointer-events-none z-0" style={{top:'-320px',right:'-220px',width:'860px',height:'860px',borderRadius:'50%',background:'radial-gradient(circle, rgba(56,189,248,.14), transparent 62%)',animation:'orb-a 14s ease-in-out infinite'}} />
-            <div className="fixed pointer-events-none z-0" style={{bottom:'-340px',left:'-240px',width:'960px',height:'960px',borderRadius:'50%',background:'radial-gradient(circle, rgba(168,85,247,.16), transparent 60%)',animation:'orb-b 18s ease-in-out infinite'}} />
-            <div className="fixed pointer-events-none z-0" style={{top:'38%',left:'-260px',width:'660px',height:'660px',borderRadius:'50%',background:'radial-gradient(circle, rgba(139,92,246,.09), transparent 65%)',animation:'orb-c 22s ease-in-out infinite'}} />
-            <div className="fixed pointer-events-none z-0" style={{top:'20%',right:'-200px',width:'520px',height:'520px',borderRadius:'50%',background:'radial-gradient(circle, rgba(192,132,252,.07), transparent 60%)',animation:'orb-a 20s ease-in-out 4s infinite'}} />
+            <div className="orb-container">
+              <div style={{position:'absolute',top:'-320px',right:'-220px',width:'860px',height:'860px',borderRadius:'50%',background:'radial-gradient(circle, rgba(56,189,248,.14), transparent 62%)',animation:'orb-a 14s ease-in-out infinite'}} />
+              <div style={{position:'absolute',bottom:'-340px',left:'-240px',width:'960px',height:'960px',borderRadius:'50%',background:'radial-gradient(circle, rgba(168,85,247,.16), transparent 60%)',animation:'orb-b 18s ease-in-out infinite'}} />
+              <div style={{position:'absolute',top:'38%',left:'-260px',width:'660px',height:'660px',borderRadius:'50%',background:'radial-gradient(circle, rgba(139,92,246,.09), transparent 65%)',animation:'orb-c 22s ease-in-out infinite'}} />
+              <div style={{position:'absolute',top:'20%',right:'-200px',width:'520px',height:'520px',borderRadius:'50%',background:'radial-gradient(circle, rgba(192,132,252,.07), transparent 60%)',animation:'orb-a 20s ease-in-out 4s infinite'}} />
+            </div>
             <HeaderServer />
           </>
         )}
