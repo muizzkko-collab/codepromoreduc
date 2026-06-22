@@ -94,6 +94,7 @@ export const t = {
     permSiteContent: 'Contenu du site (carrousel, statistiques)',
     heroSlides: 'Carrousel Hero',
     siteStats: 'Statistiques affichées',
+    sidebarBanner: 'Bannière sidebar',
     seoContent: 'Contenu SEO',
   },
   en: {
@@ -189,6 +190,7 @@ export const t = {
     permSiteContent: 'Site content (carousel, stats)',
     heroSlides: 'Hero carousel',
     siteStats: 'Displayed stats',
+    sidebarBanner: 'Sidebar banner',
     seoContent: 'SEO Content',
   },
 } as const

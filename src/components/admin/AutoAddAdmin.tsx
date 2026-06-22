@@ -171,10 +171,6 @@ export function AutoAddAdmin() {
         </div>
       )}
 
-      {/* API key notice */}
-      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
-        <strong>Note :</strong> La recherche Awin nécessite une clé API. Configurez <code className="bg-blue-100 px-1 rounded">AWIN_API_KEY</code> dans votre <code className="bg-blue-100 px-1 rounded">.env.local</code>.
-      </div>
     </div>
   )
 }

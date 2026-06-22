@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Store, Coupon } from '@/lib/types'
 import { getCurrentMonthYear } from '@/lib/utils'
 import { CouponRevealButton } from '@/components/CouponRevealButton'
+import type { SidebarBanner } from '@/app/actions/site-content'
 
 interface SimilarCoupon {
   id: string; title: string; code: string; discount_value: string | null
@@ -15,6 +16,7 @@ interface Props {
   store: Store
   coupons: Coupon[]
   similarCoupons: SimilarCoupon[]
+  sidebarBanner: SidebarBanner | null
 }
 
 type Filter = 'ALL' | 'CODES' | 'DEALS'
@@ -122,7 +124,7 @@ function StoreLogo({ store, size }: { store: Store; size: number }) {
   )
 }
 
-export function StorePageClient({ store, coupons, similarCoupons }: Props) {
+export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner }: Props) {
   const [filter, setFilter] = useState<Filter>('ALL')
   const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({})
   const [openFaqs, setOpenFaqs] = useState<Record<number, boolean>>({})
@@ -569,16 +571,8 @@ export function StorePageClient({ store, coupons, similarCoupons }: Props) {
             {/* RIGHT SIDEBAR */}
             <div className="store-sidebar" style={{ display:'flex', flexDirection:'column', gap:18 }}>
 
-              {/* Sponsored */}
-              <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden' }}>
-                <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
-                <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12, boxShadow:'none' }}>Sponsored Ad</span>
-                <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>GoDaddy Airo™</h4>
-                <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>Lancez votre présence en ligne. L&apos;IA configure automatiquement domaines, logo et newsletters.</p>
-                <button style={{ width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, cursor:'pointer', boxShadow:'none' }}>
-                  Découvrir Airo
-                </button>
-              </div>
+              {/* Sidebar banner — managed via admin panel */}
+              {sidebarBanner && <SidebarBannerWidget banner={sidebarBanner} />}
 
               {/* Tips */}
               <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.06)', borderRadius:18, padding:18 }}>
@@ -690,6 +684,62 @@ function StoreContentSection({ store }: { store: Store }) {
             ))}
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+
+// ── Sidebar Banner Widget ─────────────────────────────────────────────────────
+function SidebarBannerWidget({ banner }: { banner: SidebarBanner }) {
+  const [copied, setCopied] = useState(false)
+  const code = banner.button_code?.trim()
+
+  function copyCode() {
+    if (!code) return
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden' }}>
+      <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
+      <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
+        {banner.label}
+      </span>
+      <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{banner.title}</h4>
+      {banner.description && (
+        <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{banner.description}</p>
+      )}
+      {code ? (
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <a
+            href={banner.link_url}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center', textDecoration:'none', display:'block' }}
+          >
+            <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{banner.button_label}</div>
+            <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{code.toUpperCase()}</div>
+          </a>
+          <button
+            onClick={copyCode}
+            style={{ padding:'9px 12px', background: copied ? 'rgba(20,184,166,.3)' : 'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', cursor:'pointer', whiteSpace:'nowrap', transition:'background .15s' }}
+          >
+            {copied ? 'Copié ✓' : 'Copier'}
+          </button>
+        </div>
+      ) : (
+        <a
+          href={banner.link_url}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          style={{ display:'block', width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center', textDecoration:'none' }}
+        >
+          {banner.button_label}
+        </a>
       )}
     </div>
   )

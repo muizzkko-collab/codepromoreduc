@@ -1,10 +1,10 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useLang } from './LangContext'
-import { Plus, Pencil, Trash2, X, Save } from 'lucide-react'
-import type { HeroSlide, SiteStat } from '@/app/actions/site-content'
+import { Plus, Pencil, Trash2, X, Save, ExternalLink } from 'lucide-react'
+import type { HeroSlide, SiteStat, SidebarBanner } from '@/app/actions/site-content'
 import {
-  upsertHeroSlide, deleteHeroSlide, uploadHeroImage, updateSiteStat,
+  upsertHeroSlide, deleteHeroSlide, uploadHeroImage, updateSiteStat, upsertSidebarBanner,
 } from '@/app/actions/site-content'
 
 const EMPTY_SLIDE: Partial<HeroSlide> = {
@@ -13,29 +13,182 @@ const EMPTY_SLIDE: Partial<HeroSlide> = {
   sort_order: 0, is_active: true,
 }
 
-export function SiteContentAdmin({ initialSlides, initialStats }: { initialSlides: HeroSlide[]; initialStats: SiteStat[] }) {
+const EMPTY_BANNER: Omit<SidebarBanner, 'id' | 'updated_at'> = {
+  label: 'Offre exclusive',
+  title: '',
+  description: '',
+  button_label: 'Voir l\'offre',
+  button_code: '',
+  link_url: '/',
+  is_active: true,
+}
+
+export function SiteContentAdmin({
+  initialSlides,
+  initialStats,
+  initialBanner,
+}: {
+  initialSlides:  HeroSlide[]
+  initialStats:   SiteStat[]
+  initialBanner:  SidebarBanner | null
+}) {
   const { tr } = useLang()
-  const [tab, setTab] = useState<'slides' | 'stats'>('slides')
+  const [tab, setTab] = useState<'slides' | 'stats' | 'banner'>('slides')
   const [slides, setSlides] = useState<HeroSlide[]>(initialSlides)
-  const [stats, setStats]   = useState<SiteStat[]>(initialStats)
+  const [stats,  setStats]  = useState<SiteStat[]>(initialStats)
+
+  const tabs: { key: typeof tab; label: string }[] = [
+    { key: 'slides', label: tr.heroSlides },
+    { key: 'stats',  label: tr.siteStats  },
+    { key: 'banner', label: tr.sidebarBanner },
+  ]
 
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold text-navy">{tr.siteContent}</h1>
 
       <div className="flex border-b border-gray-200">
-        <button onClick={() => setTab('slides')} className={`px-5 py-3 text-sm font-medium border-b-2 ${tab === 'slides' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
-          {tr.heroSlides}
-        </button>
-        <button onClick={() => setTab('stats')} className={`px-5 py-3 text-sm font-medium border-b-2 ${tab === 'stats' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}>
-          {tr.siteStats}
-        </button>
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-5 py-3 text-sm font-medium border-b-2 ${tab === t.key ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {tab === 'slides' ? <SlidesTab slides={slides} setSlides={setSlides} /> : <StatsTab stats={stats} setStats={setStats} />}
+      {tab === 'slides' && <SlidesTab slides={slides} setSlides={setSlides} />}
+      {tab === 'stats'  && <StatsTab  stats={stats}   setStats={setStats}   />}
+      {tab === 'banner' && <BannerTab initialBanner={initialBanner} />}
     </div>
   )
 }
+
+// ── Sidebar Banner Tab ────────────────────────────────────────────────────────
+
+function BannerTab({ initialBanner }: { initialBanner: SidebarBanner | null }) {
+  const { tr } = useLang()
+  const [banner, setBanner] = useState<Omit<SidebarBanner, 'id' | 'updated_at'> & { id?: string }>(
+    initialBanner
+      ? { ...initialBanner }
+      : { ...EMPTY_BANNER }
+  )
+  const [saving, setSaving]   = useState(false)
+  const [saved,  setSaved]    = useState(false)
+  const [error,  setError]    = useState<string | null>(null)
+
+  async function handleSave() {
+    if (!banner.title || !banner.link_url) return
+    setSaving(true); setError(null); setSaved(false)
+    try {
+      const { data, error: err } = await upsertSidebarBanner({
+        ...banner,
+        button_code: banner.button_code?.trim() || null,
+        description: banner.description?.trim() || null,
+      })
+      if (err) { setError(err); return }
+      if (data) setBanner(data as SidebarBanner)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } finally { setSaving(false) }
+  }
+
+  // Live preview
+  const previewCode = banner.button_code?.trim()
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Form */}
+      <div className="space-y-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h2 className="font-semibold text-navy text-sm uppercase tracking-wide">Configuration</h2>
+
+          {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
+          {saved && <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">Bannière sauvegardée ✓</div>}
+
+          <Field label="Badge (ex: Offre exclusive, Partenaire) *">
+            <input value={banner.label} onChange={e => setBanner(p => ({ ...p, label: e.target.value }))} className="input-base" placeholder="Offre exclusive" />
+          </Field>
+
+          <Field label="Titre *">
+            <input value={banner.title} onChange={e => setBanner(p => ({ ...p, title: e.target.value }))} className="input-base" placeholder="Ex: GoDaddy Airo™" />
+          </Field>
+
+          <Field label="Description (optionnelle)">
+            <textarea value={banner.description ?? ''} onChange={e => setBanner(p => ({ ...p, description: e.target.value }))} rows={3} className="input-base resize-none" placeholder="Courte description de l'offre..." />
+          </Field>
+
+          <Field label="Texte du bouton *">
+            <input value={banner.button_label} onChange={e => setBanner(p => ({ ...p, button_label: e.target.value }))} className="input-base" placeholder="Voir l'offre" />
+          </Field>
+
+          <Field label="Code promo sur le bouton (optionnel — laisser vide si aucun)">
+            <input value={banner.button_code ?? ''} onChange={e => setBanner(p => ({ ...p, button_code: e.target.value }))} className="input-base font-mono uppercase" placeholder="PROMO20" />
+            <p className="text-xs text-gray-400 mt-1">Si renseigné, le code s'affiche sur le bouton avec un style copie-code.</p>
+          </Field>
+
+          <Field label="URL de destination *">
+            <div className="flex gap-2">
+              <input value={banner.link_url} onChange={e => setBanner(p => ({ ...p, link_url: e.target.value }))} className="input-base flex-1" placeholder="https://..." />
+              {banner.link_url && (
+                <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-navy shrink-0">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              )}
+            </div>
+          </Field>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={banner.is_active} onChange={e => setBanner(p => ({ ...p, is_active: e.target.checked }))} className="rounded" />
+            Afficher cette bannière sur les pages boutique
+          </label>
+
+          <button
+            onClick={handleSave}
+            disabled={saving || !banner.title || !banner.link_url}
+            className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-primary-dark disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Sauvegarde...' : 'Sauvegarder la bannière'}
+          </button>
+        </div>
+      </div>
+
+      {/* Live preview */}
+      <div className="space-y-3">
+        <h2 className="font-semibold text-navy text-sm uppercase tracking-wide">Aperçu en temps réel</h2>
+        <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden', maxWidth:280 }}>
+          <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
+          <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
+            {banner.label || 'Badge'}
+          </span>
+          <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{banner.title || 'Titre de la bannière'}</h4>
+          {banner.description && (
+            <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{banner.description}</p>
+          )}
+          {previewCode ? (
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center' }}>
+                <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{banner.button_label}</div>
+                <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{previewCode.toUpperCase()}</div>
+              </div>
+              <div style={{ padding:'9px 12px', background:'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', cursor:'pointer', whiteSpace:'nowrap' }}>Copier</div>
+            </div>
+          ) : (
+            <button style={{ width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, cursor:'pointer' }}>
+              {banner.button_label || 'Voir l\'offre'}
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-400">Ce widget s'affiche dans la colonne droite de toutes les pages boutique.</p>
+      </div>
+    </div>
+  )
+}
+
+// ── Slides Tab ────────────────────────────────────────────────────────────────
 
 function SlidesTab({ slides, setSlides }: { slides: HeroSlide[]; setSlides: (fn: (prev: HeroSlide[]) => HeroSlide[]) => void }) {
   const { tr } = useLang()
@@ -185,6 +338,8 @@ function SlidesTab({ slides, setSlides }: { slides: HeroSlide[]; setSlides: (fn:
     </div>
   )
 }
+
+// ── Stats Tab ────────────────────────────────────────────────────────────────
 
 function StatsTab({ stats, setStats }: { stats: SiteStat[]; setStats: (fn: (prev: SiteStat[]) => SiteStat[]) => void }) {
   const { tr } = useLang()
