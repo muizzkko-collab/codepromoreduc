@@ -24,6 +24,13 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover' as const,
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const hdrs = await headers()
   const pathname = hdrs.get('x-pathname') ?? ''
