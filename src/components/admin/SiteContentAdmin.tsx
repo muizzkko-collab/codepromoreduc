@@ -4,7 +4,8 @@ import { useLang } from './LangContext'
 import { Plus, Pencil, Trash2, X, Save, ExternalLink } from 'lucide-react'
 import type { HeroSlide, SiteStat, SidebarBanner } from '@/app/actions/site-content'
 import {
-  upsertHeroSlide, deleteHeroSlide, uploadHeroImage, updateSiteStat, upsertSidebarBanner,
+  upsertHeroSlide, deleteHeroSlide, uploadHeroImage, updateSiteStat,
+  upsertSidebarBanner, deleteSidebarBanner,
 } from '@/app/actions/site-content'
 
 const EMPTY_SLIDE: Partial<HeroSlide> = {
@@ -21,16 +22,17 @@ const EMPTY_BANNER: Omit<SidebarBanner, 'id' | 'updated_at'> = {
   button_code: '',
   link_url: '/',
   is_active: true,
+  sort_order: 0,
 }
 
 export function SiteContentAdmin({
   initialSlides,
   initialStats,
-  initialBanner,
+  initialBanners,
 }: {
-  initialSlides:  HeroSlide[]
-  initialStats:   SiteStat[]
-  initialBanner:  SidebarBanner | null
+  initialSlides:   HeroSlide[]
+  initialStats:    SiteStat[]
+  initialBanners:  SidebarBanner[]
 }) {
   const { tr } = useLang()
   const [tab, setTab] = useState<'slides' | 'stats' | 'banner'>('slides')
@@ -61,129 +63,224 @@ export function SiteContentAdmin({
 
       {tab === 'slides' && <SlidesTab slides={slides} setSlides={setSlides} />}
       {tab === 'stats'  && <StatsTab  stats={stats}   setStats={setStats}   />}
-      {tab === 'banner' && <BannerTab initialBanner={initialBanner} />}
+      {tab === 'banner' && <BannerTab initialBanners={initialBanners} />}
     </div>
   )
 }
 
 // ── Sidebar Banner Tab ────────────────────────────────────────────────────────
 
-function BannerTab({ initialBanner }: { initialBanner: SidebarBanner | null }) {
-  const { tr } = useLang()
-  const [banner, setBanner] = useState<Omit<SidebarBanner, 'id' | 'updated_at'> & { id?: string }>(
-    initialBanner
-      ? { ...initialBanner }
-      : { ...EMPTY_BANNER }
-  )
-  const [saving, setSaving]   = useState(false)
-  const [saved,  setSaved]    = useState(false)
-  const [error,  setError]    = useState<string | null>(null)
+const MAX_BANNERS = 4
+
+function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
+  const [banners,    setBanners]    = useState<SidebarBanner[]>(initialBanners)
+  const [panelOpen,  setPanelOpen]  = useState(false)
+  const [editing,    setEditing]    = useState<Omit<SidebarBanner, 'updated_at'> & { id?: string }>({ ...EMPTY_BANNER })
+  const [saving,     setSaving]     = useState(false)
+  const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
+
+  function openNew() {
+    setEditing({ ...EMPTY_BANNER, sort_order: banners.length })
+    setErrorMsg(null)
+    setPanelOpen(true)
+  }
+
+  function openEdit(b: SidebarBanner) {
+    setEditing({ ...b })
+    setErrorMsg(null)
+    setPanelOpen(true)
+  }
+
+  function closePanel() { setPanelOpen(false) }
 
   async function handleSave() {
-    if (!banner.title || !banner.link_url) return
-    setSaving(true); setError(null); setSaved(false)
+    if (!editing.title || !editing.link_url) return
+    setSaving(true); setErrorMsg(null)
     try {
-      const { data, error: err } = await upsertSidebarBanner({
-        ...banner,
-        button_code: banner.button_code?.trim() || null,
-        description: banner.description?.trim() || null,
+      const { data, error } = await upsertSidebarBanner({
+        ...editing,
+        button_code: editing.button_code?.trim() || null,
+        description: editing.description?.trim() || null,
       })
-      if (err) { setError(err); return }
-      if (data) setBanner(data as SidebarBanner)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
+      if (error) { setErrorMsg(error); return }
+      if (data) {
+        setBanners(prev =>
+          editing.id
+            ? prev.map(b => b.id === data.id ? data as SidebarBanner : b)
+            : [...prev, data as SidebarBanner].sort((a, b) => a.sort_order - b.sort_order)
+        )
+      }
+      closePanel()
     } finally { setSaving(false) }
   }
 
-  // Live preview
-  const previewCode = banner.button_code?.trim()
+  async function handleDelete(id: string) {
+    if (!confirm('Supprimer cette bannière ?')) return
+    const { error } = await deleteSidebarBanner(id)
+    if (error) { alert(error); return }
+    setBanners(prev => prev.filter(b => b.id !== id))
+  }
+
+  const previewCode = editing.button_code?.trim()
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Form */}
-      <div className="space-y-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-navy text-sm uppercase tracking-wide">Configuration</h2>
-
-          {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{error}</div>}
-          {saved && <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">Bannière sauvegardée ✓</div>}
-
-          <Field label="Badge (ex: Offre exclusive, Partenaire) *">
-            <input value={banner.label} onChange={e => setBanner(p => ({ ...p, label: e.target.value }))} className="input-base" placeholder="Offre exclusive" />
-          </Field>
-
-          <Field label="Titre *">
-            <input value={banner.title} onChange={e => setBanner(p => ({ ...p, title: e.target.value }))} className="input-base" placeholder="Ex: GoDaddy Airo™" />
-          </Field>
-
-          <Field label="Description (optionnelle)">
-            <textarea value={banner.description ?? ''} onChange={e => setBanner(p => ({ ...p, description: e.target.value }))} rows={3} className="input-base resize-none" placeholder="Courte description de l'offre..." />
-          </Field>
-
-          <Field label="Texte du bouton *">
-            <input value={banner.button_label} onChange={e => setBanner(p => ({ ...p, button_label: e.target.value }))} className="input-base" placeholder="Voir l'offre" />
-          </Field>
-
-          <Field label="Code promo sur le bouton (optionnel — laisser vide si aucun)">
-            <input value={banner.button_code ?? ''} onChange={e => setBanner(p => ({ ...p, button_code: e.target.value }))} className="input-base font-mono uppercase" placeholder="PROMO20" />
-            <p className="text-xs text-gray-400 mt-1">Si renseigné, le code s'affiche sur le bouton avec un style copie-code.</p>
-          </Field>
-
-          <Field label="URL de destination *">
-            <div className="flex gap-2">
-              <input value={banner.link_url} onChange={e => setBanner(p => ({ ...p, link_url: e.target.value }))} className="input-base flex-1" placeholder="https://..." />
-              {banner.link_url && (
-                <a href={banner.link_url} target="_blank" rel="noopener noreferrer" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-navy shrink-0">
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              )}
-            </div>
-          </Field>
-
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={banner.is_active} onChange={e => setBanner(p => ({ ...p, is_active: e.target.checked }))} className="rounded" />
-            Afficher cette bannière sur les pages boutique
-          </label>
-
-          <button
-            onClick={handleSave}
-            disabled={saving || !banner.title || !banner.link_url}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-primary-dark disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? 'Sauvegarde...' : 'Sauvegarder la bannière'}
-          </button>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-500">{banners.length}/{MAX_BANNERS} bannières · rotation automatique toutes les 7 secondes</p>
         </div>
+        <button
+          onClick={openNew}
+          disabled={banners.length >= MAX_BANNERS}
+          className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Plus className="h-4 w-4" /> Ajouter une bannière
+        </button>
       </div>
 
-      {/* Live preview */}
-      <div className="space-y-3">
-        <h2 className="font-semibold text-navy text-sm uppercase tracking-wide">Aperçu en temps réel</h2>
-        <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden', maxWidth:280 }}>
-          <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
-          <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
-            {banner.label || 'Badge'}
-          </span>
-          <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{banner.title || 'Titre de la bannière'}</h4>
-          {banner.description && (
-            <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{banner.description}</p>
-          )}
-          {previewCode ? (
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center' }}>
-                <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{banner.button_label}</div>
-                <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{previewCode.toUpperCase()}</div>
+      {/* Banner list */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {banners.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-sm">
+            <p className="mb-3">Aucune bannière configurée.</p>
+            <p>Le widget affichera une bannière par défaut sur les pages boutique.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {banners.map((b, i) => (
+              <div key={b.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50">
+                {/* Position indicator */}
+                <span className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-bold text-teal-600 uppercase tracking-wide">{b.label}</span>
+                    {!b.is_active && <span className="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">inactif</span>}
+                  </div>
+                  <p className="font-semibold text-navy text-sm truncate">{b.title}</p>
+                  {b.description && <p className="text-xs text-gray-400 truncate mt-0.5">{b.description}</p>}
+                  <div className="flex items-center gap-3 mt-1">
+                    {b.button_code && (
+                      <span className="text-xs font-mono bg-teal-50 text-teal-700 border border-teal-200 rounded px-1.5 py-0.5">{b.button_code}</span>
+                    )}
+                    <span className="text-xs text-gray-400 truncate">{b.link_url}</span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={() => openEdit(b)} className="p-1.5 text-gray-400 hover:text-navy rounded hover:bg-gray-100">
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => handleDelete(b.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div style={{ padding:'9px 12px', background:'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', cursor:'pointer', whiteSpace:'nowrap' }}>Copier</div>
-            </div>
-          ) : (
-            <button style={{ width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, cursor:'pointer' }}>
-              {banner.button_label || 'Voir l\'offre'}
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-gray-400">Ce widget s'affiche dans la colonne droite de toutes les pages boutique.</p>
+            ))}
+          </div>
+        )}
       </div>
+
+      <p className="text-xs text-gray-400">Les bannières actives s'affichent dans l'ordre ci-dessus. Le carrousel tourne automatiquement.</p>
+
+      {/* Slide panel */}
+      {panelOpen && (
+        <div className="fixed inset-0 z-[100] flex" role="dialog" aria-modal="true">
+          <div className="flex-1 bg-black/40" onClick={closePanel} />
+          <div className="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="font-semibold text-navy">{editing.id ? 'Modifier la bannière' : 'Nouvelle bannière'}</h2>
+              <button onClick={closePanel}><X className="h-5 w-5 text-gray-400" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 h-full">
+                {/* Form */}
+                <div className="p-6 space-y-4 border-r border-gray-100">
+                  {errorMsg && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{errorMsg}</div>}
+
+                  <Field label="Badge (ex: Offre exclusive, Partenaire) *">
+                    <input value={editing.label} onChange={e => setEditing(p => ({ ...p, label: e.target.value }))} className="input-base" placeholder="Offre exclusive" />
+                  </Field>
+                  <Field label="Titre *">
+                    <input value={editing.title} onChange={e => setEditing(p => ({ ...p, title: e.target.value }))} className="input-base" placeholder="Ex: Économisez 20% chez Nike" />
+                  </Field>
+                  <Field label="Description (optionnelle)">
+                    <textarea value={editing.description ?? ''} onChange={e => setEditing(p => ({ ...p, description: e.target.value }))} rows={3} className="input-base resize-none" placeholder="Courte description de l'offre..." />
+                  </Field>
+                  <Field label="Texte du bouton *">
+                    <input value={editing.button_label} onChange={e => setEditing(p => ({ ...p, button_label: e.target.value }))} className="input-base" placeholder="Voir l'offre" />
+                  </Field>
+                  <Field label="Code promo (optionnel — laisser vide si aucun)">
+                    <input value={editing.button_code ?? ''} onChange={e => setEditing(p => ({ ...p, button_code: e.target.value }))} className="input-base font-mono uppercase" placeholder="PROMO20" />
+                    <p className="text-xs text-gray-400 mt-1">Affiche le code avec un bouton "Copier".</p>
+                  </Field>
+                  <Field label="URL de destination *">
+                    <div className="flex gap-2">
+                      <input value={editing.link_url} onChange={e => setEditing(p => ({ ...p, link_url: e.target.value }))} className="input-base flex-1" placeholder="https://..." />
+                      {editing.link_url && (
+                        <a href={editing.link_url} target="_blank" rel="noopener noreferrer" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-navy shrink-0">
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                  </Field>
+                  <Field label="Ordre d'affichage">
+                    <input type="number" min={0} value={editing.sort_order} onChange={e => setEditing(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))} className="input-base" />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={editing.is_active} onChange={e => setEditing(p => ({ ...p, is_active: e.target.checked }))} className="rounded" />
+                    Afficher dans le carrousel
+                  </label>
+                </div>
+
+                {/* Live preview */}
+                <div className="p-6 bg-gray-950 flex flex-col gap-4">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aperçu</p>
+                  <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden' }}>
+                    <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
+                    <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
+                      {editing.label || 'Badge'}
+                    </span>
+                    <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{editing.title || 'Titre de la bannière'}</h4>
+                    {editing.description && (
+                      <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{editing.description}</p>
+                    )}
+                    {previewCode ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center' }}>
+                          <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{editing.button_label}</div>
+                          <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{previewCode.toUpperCase()}</div>
+                        </div>
+                        <div style={{ padding:'9px 12px', background:'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', whiteSpace:'nowrap' }}>Copier</div>
+                      </div>
+                    ) : (
+                      <div style={{ width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center' }}>
+                        {editing.button_label || 'Voir l\'offre'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+              <button onClick={closePanel} className="flex-1 border border-gray-200 rounded-lg py-2 text-sm hover:bg-gray-50">Annuler</button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !editing.title || !editing.link_url}
+                className="flex-1 flex items-center justify-center gap-2 bg-primary text-white rounded-lg py-2 text-sm font-semibold hover:bg-primary-dark disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

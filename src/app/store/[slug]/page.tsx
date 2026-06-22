@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { breadcrumbJsonLd } from '@/components/Breadcrumb'
 import { Store, Coupon } from '@/lib/types'
 import { getSiteUrl, getCurrentMonthYear, hasCode } from '@/lib/utils'
-import { getSidebarBanner } from '@/app/actions/site-content'
+import { getSidebarBanners } from '@/app/actions/site-content'
 import type { Metadata } from 'next'
 import { StorePageClient } from './StorePageClient'
 
@@ -51,9 +51,9 @@ export default async function StorePage({ params }: Props) {
   const today     = new Date().toISOString().split('T')[0]
   const siteUrl   = getSiteUrl()
 
-  const [{ data: store }, { data: sidebarBanner }] = await Promise.all([
+  const [{ data: store }, { data: sidebarBanners }] = await Promise.all([
     supabase.from('stores').select('*').eq('slug', slug).eq('is_active', true).single(),
-    getSidebarBanner(),
+    getSidebarBanners(),
   ])
   if (!store) notFound()
 
@@ -168,7 +168,7 @@ export default async function StorePage({ params }: Props) {
       {faqJsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       )}
-      <StorePageClient store={store} coupons={coupons} similarCoupons={similarCoupons} sidebarBanner={sidebarBanner} />
+      <StorePageClient store={store} coupons={coupons} similarCoupons={similarCoupons} sidebarBanners={sidebarBanners} />
     </>
   )
 }

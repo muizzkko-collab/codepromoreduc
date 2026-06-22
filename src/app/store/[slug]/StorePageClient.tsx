@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Store, Coupon } from '@/lib/types'
 import { getCurrentMonthYear } from '@/lib/utils'
@@ -16,7 +16,7 @@ interface Props {
   store: Store
   coupons: Coupon[]
   similarCoupons: SimilarCoupon[]
-  sidebarBanner: SidebarBanner | null
+  sidebarBanners: SidebarBanner[]
 }
 
 type Filter = 'ALL' | 'CODES' | 'DEALS'
@@ -124,7 +124,7 @@ function StoreLogo({ store, size }: { store: Store; size: number }) {
   )
 }
 
-export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner }: Props) {
+export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners }: Props) {
   const [filter, setFilter] = useState<Filter>('ALL')
   const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({})
   const [openFaqs, setOpenFaqs] = useState<Record<number, boolean>>({})
@@ -605,8 +605,8 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
             {/* RIGHT SIDEBAR */}
             <div className="store-sidebar" style={{ display:'flex', flexDirection:'column', gap:18 }}>
 
-              {/* Sidebar banner — managed via admin panel */}
-              <SidebarBannerWidget banner={sidebarBanner ?? FALLBACK_BANNER} />
+              {/* Sidebar banner carousel — managed via admin panel */}
+              <SidebarBannerCarousel banners={sidebarBanners.length > 0 ? sidebarBanners : [FALLBACK_BANNER]} />
 
               {/* Tips */}
               <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.06)', borderRadius:18, padding:18 }}>
@@ -724,7 +724,7 @@ function StoreContentSection({ store }: { store: Store }) {
 }
 
 
-// ── Sidebar Banner Widget ─────────────────────────────────────────────────────
+// ── Sidebar Banner Carousel ───────────────────────────────────────────────────
 const FALLBACK_BANNER: SidebarBanner = {
   id: 'fallback',
   label: 'Partenaire officiel',
@@ -734,10 +734,32 @@ const FALLBACK_BANNER: SidebarBanner = {
   button_code: null,
   link_url: '/all-stores/',
   is_active: true,
+  sort_order: 0,
   updated_at: '',
 }
 
-function SidebarBannerWidget({ banner }: { banner: SidebarBanner }) {
+function SidebarBannerCarousel({ banners }: { banners: SidebarBanner[] }) {
+  const [idx, setIdx]     = useState(0)
+  const [anim, setAnim]   = useState(true)
+  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function goTo(next: number) {
+    setAnim(false)
+    setTimeout(() => {
+      setIdx(next)
+      setAnim(true)
+    }, 200)
+  }
+
+  useEffect(() => {
+    if (banners.length <= 1) return
+    timerRef.current = setInterval(() => {
+      goTo((idx + 1) % banners.length)
+    }, 7000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [idx, banners.length])
+
+  const banner = banners[idx]
   const [copied, setCopied] = useState(false)
   const code = banner.button_code?.trim()
 
@@ -749,43 +771,89 @@ function SidebarBannerWidget({ banner }: { banner: SidebarBanner }) {
     })
   }
 
+  function handleDotClick(i: number) {
+    if (timerRef.current) clearInterval(timerRef.current)
+    goTo(i)
+  }
+
   return (
-    <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden' }}>
-      <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
-      <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
-        {banner.label}
-      </span>
-      <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{banner.title}</h4>
-      {banner.description && (
-        <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{banner.description}</p>
-      )}
-      {code ? (
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+    <div>
+      {/* Banner card */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))',
+          border: '1px solid rgba(255,255,255,.08)',
+          borderRadius: 18,
+          padding: 18,
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'opacity 200ms ease',
+          opacity: anim ? 1 : 0,
+        }}
+      >
+        <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
+
+        <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
+          {banner.label}
+        </span>
+
+        <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{banner.title}</h4>
+
+        {banner.description && (
+          <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{banner.description}</p>
+        )}
+
+        {code ? (
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <a
+              href={banner.link_url}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center', textDecoration:'none', display:'block' }}
+            >
+              <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{banner.button_label}</div>
+              <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{code.toUpperCase()}</div>
+            </a>
+            <button
+              onClick={copyCode}
+              style={{ padding:'9px 12px', background: copied ? 'rgba(20,184,166,.3)' : 'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', cursor:'pointer', whiteSpace:'nowrap', transition:'background .15s' }}
+            >
+              {copied ? 'Copié ✓' : 'Copier'}
+            </button>
+          </div>
+        ) : (
           <a
             href={banner.link_url}
             target="_blank"
             rel="noopener noreferrer sponsored"
-            style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center', textDecoration:'none', display:'block' }}
+            style={{ display:'block', width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center', textDecoration:'none' }}
           >
-            <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{banner.button_label}</div>
-            <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{code.toUpperCase()}</div>
+            {banner.button_label}
           </a>
-          <button
-            onClick={copyCode}
-            style={{ padding:'9px 12px', background: copied ? 'rgba(20,184,166,.3)' : 'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', cursor:'pointer', whiteSpace:'nowrap', transition:'background .15s' }}
-          >
-            {copied ? 'Copié ✓' : 'Copier'}
-          </button>
+        )}
+      </div>
+
+      {/* Dot indicators — only when 2+ banners */}
+      {banners.length > 1 && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:10 }}>
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => handleDotClick(i)}
+              aria-label={`Bannière ${i + 1}`}
+              style={{
+                width: i === idx ? 18 : 6,
+                height: 6,
+                borderRadius: 999,
+                background: i === idx ? '#5eead4' : 'rgba(255,255,255,.18)',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                transition: 'all 300ms ease',
+              }}
+            />
+          ))}
         </div>
-      ) : (
-        <a
-          href={banner.link_url}
-          target="_blank"
-          rel="noopener noreferrer sponsored"
-          style={{ display:'block', width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center', textDecoration:'none' }}
-        >
-          {banner.button_label}
-        </a>
       )}
     </div>
   )

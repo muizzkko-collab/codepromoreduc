@@ -69,26 +69,35 @@ export async function uploadHeroImage(slideId: string, formData: FormData) {
 // ── Sidebar banner ───────────────────────────────────────────
 export interface SidebarBanner {
   id: string
-  label: string        // small badge text e.g. "Offre exclusive"
+  label: string
   title: string
   description: string | null
   button_label: string
-  button_code: string | null   // promo code shown on button, null = no code
+  button_code: string | null
   link_url: string
   is_active: boolean
+  sort_order: number
   updated_at: string
 }
 
-export async function getSidebarBanner() {
+export async function getSidebarBanners() {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('sidebar_banners')
     .select('*')
     .eq('is_active', true)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  return { data: data as SidebarBanner | null, error: error?.message ?? null }
+    .order('sort_order')
+    .limit(4)
+  return { data: (data ?? []) as SidebarBanner[], error: error?.message ?? null }
+}
+
+export async function listAllSidebarBanners() {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('sidebar_banners')
+    .select('*')
+    .order('sort_order')
+  return { data: (data ?? []) as SidebarBanner[], error: error?.message ?? null }
 }
 
 export async function upsertSidebarBanner(payload: Omit<SidebarBanner, 'id' | 'updated_at'> & { id?: string }) {
@@ -102,6 +111,13 @@ export async function upsertSidebarBanner(payload: Omit<SidebarBanner, 'id' | 'u
   }
   const { data, error } = await supabase.from('sidebar_banners').insert(row).select().single()
   return { data, error: error?.message ?? null }
+}
+
+export async function deleteSidebarBanner(id: string) {
+  try { await requirePermission('site_content') } catch (e) { return { error: (e as Error).message } }
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('sidebar_banners').delete().eq('id', id)
+  return { error: error?.message ?? null }
 }
 
 // ── Site stats ───────────────────────────────────────────────
