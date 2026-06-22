@@ -204,7 +204,11 @@
   /* Core overflow fix */
   *, *::before, *::after { box-sizing: border-box; }
 
-  .store-main { padding: 14px 12px 60px; }
+  /* Hard clamp — nothing in the document tree may exceed viewport */
+  html, body { width: 100vw !important; max-width: 100vw !important; overflow-x: hidden !important; }
+  main, main > *, main > * > *, section { max-width: 100vw !important; overflow-x: hidden; }
+
+  .store-main { padding: 14px 12px 60px; max-width: 100vw !important; }
   .store-two-col { grid-template-columns: 1fr !important; }
   .store-sidebar { position: static !important; }
 

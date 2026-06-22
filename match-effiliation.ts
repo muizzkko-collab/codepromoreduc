@@ -15,17 +15,28 @@ function normalise(name: string): string {
     .trim()
 }
 
+interface EffRow {
+  id_affilieur?: string | number
+  id_programme?: string | number
+  siteannonceur?: string
+  name?: string
+}
+
 function extractPrograms(data: unknown): { id: string | number; name: string }[] {
-  if (Array.isArray(data)) return data
-  if (data && typeof data === 'object') {
+  let arr: EffRow[] = []
+  if (Array.isArray(data)) arr = data as EffRow[]
+  else if (data && typeof data === 'object') {
     for (const key of Object.keys(data as object)) {
       const val = (data as Record<string, unknown>)[key]
-      if (Array.isArray(val) && val.length > 0 && typeof (val[0] as { name?: unknown }).name === 'string') {
-        return val as { id: string | number; name: string }[]
-      }
+      if (Array.isArray(val)) { arr = val as EffRow[]; break }
     }
   }
-  return []
+  return arr
+    .map(r => ({
+      id:   String(r.id_programme ?? r.id_affilieur ?? ''),
+      name: String(r.siteannonceur ?? r.name ?? ''),
+    }))
+    .filter(r => r.id && r.name)
 }
 
 async function main() {
