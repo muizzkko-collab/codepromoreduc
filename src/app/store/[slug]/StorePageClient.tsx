@@ -7,8 +7,8 @@ import { CouponRevealButton } from '@/components/CouponRevealButton'
 import type { SidebarBanner } from '@/app/actions/site-content'
 
 interface SimilarCoupon {
-  id: string; title: string; code: string; discount_value: string | null
-  expiry_date: string | null; store_id: string
+  id: string; title: string; code: string | null; discount_value: string | null
+  expiry_date: string | null; store_id: string; is_featured: boolean | null
   store: { name: string; slug: string; logo_url: string | null; affiliate_url: string | null } | null
 }
 
@@ -446,16 +446,21 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                   <h3 style={{ fontSize:17, fontWeight:900, letterSpacing:'-.02em', margin:'0 0 20px', color:'#fff' }}>
                     Codes promo de boutiques similaires
                   </h3>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+                  <div className="similar-store-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
                     {similarCoupons.slice(0,8).map(c => {
                       const sStore = c.store
                       const affUrl = sStore?.affiliate_url ?? `https://codepromoreduc.fr/store/${sStore?.slug}/`
+                      const hasCode = !!c.code
                       return (
                         <div
                           key={c.id}
                           className="cpr-card-hover"
-                          style={{ background:'rgba(255,255,255,.03)', border:'1px solid rgba(255,255,255,.07)', borderRadius:16, padding:'16px 14px', display:'flex', flexDirection:'column', gap:10, transition:'all 300ms cubic-bezier(.4,0,.2,1)' }}
+                          style={{ background: c.is_featured ? 'linear-gradient(135deg,rgba(245,158,11,.06),rgba(255,255,255,.01))' : 'rgba(255,255,255,.03)', border: c.is_featured ? '1px solid rgba(245,158,11,.3)' : '1px solid rgba(255,255,255,.07)', borderRadius:16, padding:'16px 14px', display:'flex', flexDirection:'column', gap:10, transition:'all 300ms cubic-bezier(.4,0,.2,1)', position:'relative', overflow:'hidden' }}
                         >
+                          {c.is_featured && (
+                            <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#f59e0b,#fbbf24,#f59e0b)', borderRadius:'16px 16px 0 0' }} />
+                          )}
+
                           {/* Store logo + name */}
                           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                             <div style={{ width:36, height:36, borderRadius:9, background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', flexShrink:0, padding:3, boxShadow:'0 2px 8px rgba(0,0,0,.25)' }}>
@@ -469,10 +474,19 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                             </Link>
                           </div>
 
-                          {/* Discount + title */}
-                          {c.discount_value && (
-                            <span style={{ fontSize:18, fontWeight:900, color:'#fff', letterSpacing:'-.02em', lineHeight:1 }}>{c.discount_value}</span>
-                          )}
+                          {/* Badges + discount */}
+                          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                            {c.is_featured && (
+                              <span style={{ padding:'2px 6px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.1em', borderRadius:4, background:'linear-gradient(90deg,#f59e0b,#fbbf24)', color:'#000' }}>⭐ TOP</span>
+                            )}
+                            <span style={{ padding:'2px 7px', fontSize:8, fontWeight:800, textTransform:'uppercase', letterSpacing:'.1em', borderRadius:4, background: hasCode ? 'rgba(56,189,248,.1)' : 'rgba(16,185,129,.1)', color: hasCode ? '#7dd3fc' : '#34d399', border:`1px solid ${hasCode ? 'rgba(56,189,248,.2)' : 'rgba(16,185,129,.2)'}` }}>
+                              {hasCode ? 'Code' : 'Offre'}
+                            </span>
+                            {c.discount_value && (
+                              <span style={{ fontSize:16, fontWeight:900, color: c.is_featured ? '#fcd34d' : '#fff', letterSpacing:'-.02em', lineHeight:1 }}>{c.discount_value}</span>
+                            )}
+                          </div>
+
                           <p style={{ fontSize:11, color:'rgba(255,255,255,.5)', margin:0, lineHeight:1.45, flexGrow:1, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
                             {c.title}
                           </p>
@@ -480,15 +494,16 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
                           {/* CTA */}
                           <CouponRevealButton
                             couponId={c.id}
-                            couponCode={c.code}
+                            couponCode={c.code ?? null}
                             couponTitle={c.title}
                             discountValue={c.discount_value ?? ''}
-                            couponType="code"
+                            couponType={hasCode ? 'code' : 'deal'}
                             storeLogoUrl={sStore?.logo_url ?? null}
                             storeName={sStore?.name ?? ''}
                             storeSlug={sStore?.slug}
                             affiliateUrl={affUrl}
                             expiryDate={c.expiry_date ?? null}
+                            featured={!!c.is_featured}
                             variant="storepage"
                           />
                         </div>

@@ -232,10 +232,11 @@
   .coupon-card  { padding: 14px 12px !important; border-radius: 16px !important; max-width: 100% !important; overflow: hidden !important; }
 
   /* Grids */
-  .verify-grid      { grid-template-columns: 1fr !important; gap: 16px !important; }
-  .store-about-grid { grid-template-columns: 1fr !important; }
-  .similar-grid     { grid-template-columns: repeat(3,1fr) !important; }
-  .glass-section    { padding: 18px 14px !important; border-radius: 16px !important; }
+  .verify-grid        { grid-template-columns: 1fr !important; gap: 16px !important; }
+  .store-about-grid   { grid-template-columns: 1fr !important; }
+  .similar-grid       { grid-template-columns: repeat(3,1fr) !important; }
+  .similar-store-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .glass-section      { padding: 18px 14px !important; border-radius: 16px !important; }
 
   /* Homepage trust strip — full width, rounded rect on mobile */
   .trust-strip { border-radius: 20px !important; }

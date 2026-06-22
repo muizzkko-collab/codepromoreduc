@@ -70,8 +70,8 @@ export default async function StorePage({ params }: Props) {
   const categoryIds = (storeCatData ?? []).map(sc => sc.category_id)
 
   interface SimilarCoupon {
-    id: string; title: string; code: string; discount_value: string | null
-    expiry_date: string | null; store_id: string
+    id: string; title: string; code: string | null; discount_value: string | null
+    expiry_date: string | null; store_id: string; is_featured: boolean | null
     store: { name: string; slug: string; logo_url: string | null; affiliate_url: string | null } | null
   }
 
@@ -79,7 +79,7 @@ export default async function StorePage({ params }: Props) {
   if (categoryIds.length > 0) {
     const { data: scData } = await supabase
       .from('store_categories').select('store_id')
-      .in('category_id', categoryIds).neq('store_id', store.id).limit(30)
+      .in('category_id', categoryIds).neq('store_id', store.id).limit(50)
     const seen = new Set<string>(); const storeIds: string[] = []
     for (const r of scData ?? []) {
       if (!seen.has(r.store_id)) { seen.add(r.store_id); storeIds.push(r.store_id) }
@@ -87,11 +87,12 @@ export default async function StorePage({ params }: Props) {
     if (storeIds.length > 0) {
       const { data: simCoupons } = await supabase
         .from('coupons')
-        .select('id, title, code, discount_value, expiry_date, store_id, store:stores(name,slug,logo_url,affiliate_url)')
+        .select('id, title, code, discount_value, expiry_date, store_id, is_featured, store:stores(name,slug,logo_url,affiliate_url)')
         .in('store_id', storeIds)
         .eq('is_active', true)
-        .not('code', 'is', null)
+        .or('is_featured.eq.true,is_exclusive.eq.true')
         .or(`expiry_date.is.null,expiry_date.gte.${today}`)
+        .order('is_featured', { ascending: false })
         .order('click_count', { ascending: false })
         .limit(8)
       similarCoupons = (simCoupons ?? []) as unknown as SimilarCoupon[]
