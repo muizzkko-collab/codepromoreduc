@@ -572,7 +572,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanner 
             <div className="store-sidebar" style={{ display:'flex', flexDirection:'column', gap:18 }}>
 
               {/* Sidebar banner — managed via admin panel */}
-              {sidebarBanner && <SidebarBannerWidget banner={sidebarBanner} />}
+              <SidebarBannerWidget banner={sidebarBanner ?? FALLBACK_BANNER} />
 
               {/* Tips */}
               <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.06)', borderRadius:18, padding:18 }}>
@@ -691,6 +691,18 @@ function StoreContentSection({ store }: { store: Store }) {
 
 
 // ── Sidebar Banner Widget ─────────────────────────────────────────────────────
+const FALLBACK_BANNER: SidebarBanner = {
+  id: 'fallback',
+  label: 'Partenaire officiel',
+  title: 'Économisez jusqu\'à 70%',
+  description: 'Découvrez des milliers de codes promo vérifiés et des offres exclusives chaque jour.',
+  button_label: 'Voir toutes les offres',
+  button_code: null,
+  link_url: '/all-stores/',
+  is_active: true,
+  updated_at: '',
+}
+
 function SidebarBannerWidget({ banner }: { banner: SidebarBanner }) {
   const [copied, setCopied] = useState(false)
   const code = banner.button_code?.trim()
