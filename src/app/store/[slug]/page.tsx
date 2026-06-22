@@ -85,17 +85,26 @@ export default async function StorePage({ params }: Props) {
       if (!seen.has(r.store_id)) { seen.add(r.store_id); storeIds.push(r.store_id) }
     }
     if (storeIds.length > 0) {
+      // Fetch up to 80 candidates, one per store, featuring top coupon
       const { data: simCoupons } = await supabase
         .from('coupons')
         .select('id, title, code, discount_value, expiry_date, store_id, is_featured, store:stores(name,slug,logo_url,affiliate_url)')
         .in('store_id', storeIds)
         .eq('is_active', true)
-        .or('is_featured.eq.true,is_exclusive.eq.true')
         .or(`expiry_date.is.null,expiry_date.gte.${today}`)
-        .order('is_featured', { ascending: false })
+        .order('is_featured', { ascending: false, nullsFirst: false })
         .order('click_count', { ascending: false })
-        .limit(8)
-      similarCoupons = (simCoupons ?? []) as unknown as SimilarCoupon[]
+        .limit(80)
+
+      // Keep only 1 coupon per store (best one), cap at 8 stores shown
+      const seen = new Set<string>()
+      const deduped: typeof simCoupons = []
+      for (const c of simCoupons ?? []) {
+        const sid = (c as { store_id: string }).store_id
+        if (!seen.has(sid)) { seen.add(sid); deduped.push(c) }
+        if (deduped.length === 8) break
+      }
+      similarCoupons = deduped as unknown as SimilarCoupon[]
     }
   }
 
