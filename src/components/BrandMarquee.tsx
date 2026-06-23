@@ -21,28 +21,30 @@ export function BrandMarquee({ stores }: Props) {
     ? stores.slice(0, 12).map(s => ({ name: s.name, slug: s.slug, logo_url: s.logo_url ?? null, bg: '#fff' }))
     : FALLBACK_BRANDS
 
-  const doubled = [...brands, ...brands]
+  // Repeat enough times to fill any viewport width seamlessly
+  const repeated = [...brands, ...brands, ...brands, ...brands]
 
   return (
     <div style={{ position:'relative', zIndex:1, padding:'32px 0', overflow:'hidden', borderTop:'1px solid rgba(255,255,255,.04)', borderBottom:'1px solid rgba(255,255,255,.04)' }}>
       {/* Edge fade masks */}
-      <div style={{ position:'absolute', left:0, top:0, bottom:0, width:120, background:'linear-gradient(90deg,#080e1a,transparent)', zIndex:2, pointerEvents:'none' }} />
-      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:120, background:'linear-gradient(270deg,#080e1a,transparent)', zIndex:2, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', left:0, top:0, bottom:0, width:140, background:'linear-gradient(90deg,#080e1a 40%,transparent)', zIndex:2, pointerEvents:'none' }} />
+      <div style={{ position:'absolute', right:0, top:0, bottom:0, width:140, background:'linear-gradient(270deg,#080e1a 40%,transparent)', zIndex:2, pointerEvents:'none' }} />
 
-      <div style={{ display:'flex', gap:0, width:'max-content', animation:'marquee-scroll 36s linear infinite' }}>
-        {doubled.map((b, i) => (
+      {/* The track: animate translateX by -50% (one full set width) for seamless loop */}
+      <div style={{ display:'flex', gap:0, animation:'marquee-x 32s linear infinite', willChange:'transform' }}>
+        {repeated.map((b, i) => (
           <Link
             key={i}
             href={`/store/${b.slug}/`}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'0 20px', textDecoration:'none', flexShrink:0 }}
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'0 16px', textDecoration:'none', flexShrink:0 }}
           >
             <div
-              style={{ width:72, height:72, borderRadius:16, border:'1px solid rgba(255,255,255,.08)', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', padding:10, transition:'all 220ms ease', overflow:'hidden' }}
+              style={{ width:88, height:88, borderRadius:18, border:'1px solid rgba(255,255,255,.08)', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', padding:12, transition:'transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease', overflow:'hidden' }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLDivElement
-                el.style.transform = 'translateY(-4px) scale(1.06)'
-                el.style.boxShadow = '0 12px 32px rgba(0,0,0,.5)'
-                el.style.borderColor = 'rgba(0,212,255,.35)'
+                el.style.transform = 'translateY(-4px) scale(1.07)'
+                el.style.boxShadow = '0 14px 36px rgba(0,0,0,.55)'
+                el.style.borderColor = 'rgba(0,212,255,.4)'
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLDivElement
@@ -60,7 +62,7 @@ export function BrandMarquee({ stores }: Props) {
                   style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }}
                 />
               ) : (
-                <div style={{ width:'100%', height:'100%', borderRadius:8, background:b.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:900, color:'#fff' }}>
+                <div style={{ width:'100%', height:'100%', borderRadius:10, background:b.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, fontWeight:900, color:'#fff' }}>
                   {b.name[0]}
                 </div>
               )}
@@ -68,6 +70,13 @@ export function BrandMarquee({ stores }: Props) {
           </Link>
         ))}
       </div>
+
+      <style>{`
+        @keyframes marquee-x {
+          0%   { transform: translateX(0) }
+          100% { transform: translateX(-50%) }
+        }
+      `}</style>
     </div>
   )
 }
