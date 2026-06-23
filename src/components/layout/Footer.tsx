@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { LogoNav } from '@/components/Logo'
 
 export async function Footer() {
   const year = new Date().getFullYear()
@@ -63,9 +64,8 @@ export async function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <div className="flex items-center gap-1 mb-3 font-extrabold text-lg tracking-tight">
-              <span className="text-white">codepromo</span>
-              <span className="text-primary">reduc</span>
+            <div className="mb-4">
+              <LogoNav width={200} />
             </div>
             <p className="text-sm leading-relaxed text-white/50">
               CodePromoReduc.fr est un annuaire de coupons indépendant. Nous participons à des réseaux d&apos;affiliation : nous pouvons percevoir une commission lorsque vous effectuez un achat via nos liens marchands.

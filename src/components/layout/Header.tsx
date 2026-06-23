@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { Search, Menu, X, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { LogoNav } from '@/components/Logo'
 
 interface CategoryLink { name: string; slug: string }
 interface TopStore { name: string; slug: string; coupon_count: number }
@@ -27,9 +28,8 @@ export function Header({ categories, topStores }: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-1 shrink-0 font-extrabold text-xl tracking-tight">
-              <span className="text-white">codepromo</span>
-              <span className="text-primary">reduc</span>
+            <Link href="/" className="shrink-0 flex items-center" aria-label="Codepromoreduc — Accueil">
+              <LogoNav width={180} />
             </Link>
 
             {/* Mega menu */}

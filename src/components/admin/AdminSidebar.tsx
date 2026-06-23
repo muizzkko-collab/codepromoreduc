@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Store, Tag, FolderOpen, Flag,
   RefreshCw, PlusCircle, LogOut, Globe, ChevronRight, Users, Image as ImageIcon, FileText,
 } from 'lucide-react'
+import { LogoIcon } from '@/components/Logo'
 import type { Permission } from '@/lib/admin-auth'
 
 const navItems = (tr: ReturnType<typeof useLang>['tr']): { href: string; icon: typeof Store; label: string; perm?: Permission }[] => [
@@ -40,14 +41,14 @@ export function AdminSidebar() {
     <aside style={{ width:240, flexShrink:0, background:'rgba(255,255,255,.02)', borderRight:'1px solid rgba(255,255,255,.06)', display:'flex', flexDirection:'column', minHeight:'100vh', backdropFilter:'blur(24px)' }}>
 
       {/* Logo */}
-      <div style={{ padding:'20px 20px 16px', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
+      <div style={{ padding:'18px 20px 14px', borderBottom:'1px solid rgba(255,255,255,.06)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#0ea5e9,#38bdf8)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(56,189,248,.3)' }}>
-            <span style={{ fontSize:13, fontWeight:900, color:'#060810' }}>CP</span>
-          </div>
+          <LogoIcon size={32} />
           <div>
-            <div style={{ fontSize:13, fontWeight:800, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>CodePromo</div>
-            <div style={{ fontSize:9, fontWeight:700, color:'rgba(56,189,248,.8)', textTransform:'uppercase', letterSpacing:'.18em', marginTop:2 }}>Admin</div>
+            <div style={{ fontSize:13, fontWeight:800, color:'#fff', letterSpacing:'-.01em', lineHeight:1 }}>
+              <span style={{ color:'#fff' }}>Codepromo</span><span style={{ color:'#00d4ff' }}>reduc</span>
+            </div>
+            <div style={{ fontSize:9, fontWeight:700, color:'rgba(0,212,255,.7)', textTransform:'uppercase', letterSpacing:'.18em', marginTop:2 }}>Admin</div>
           </div>
         </div>
       </div>
