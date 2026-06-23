@@ -121,6 +121,20 @@ export async function deleteSidebarBanner(id: string) {
   return { error: error?.message ?? null }
 }
 
+export async function uploadBannerImage(bannerId: string, formData: FormData) {
+  try { await requirePermission('site_content') } catch (e) { return { url: null, error: (e as Error).message } }
+  const supabase = createAdminClient()
+  const file = formData.get('image') as File
+  if (!file || file.size === 0) return { url: null, error: null }
+  const ext  = file.name.split('.').pop()
+  const path = `banners/${bannerId}.${ext}`
+  const bytes = await file.arrayBuffer()
+  const { error } = await supabase.storage.from('logos').upload(path, bytes, { contentType: file.type, upsert: true })
+  if (error) return { url: null, error: error.message }
+  const { data } = supabase.storage.from('logos').getPublicUrl(path)
+  return { url: data.publicUrl, error: null }
+}
+
 // ── Site stats ───────────────────────────────────────────────
 export async function listSiteStats() {
   const supabase = createAdminClient()

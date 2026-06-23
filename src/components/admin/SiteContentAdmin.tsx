@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2, X, Save, ExternalLink } from 'lucide-react'
 import type { HeroSlide, SiteStat, SidebarBanner } from '@/app/actions/site-content'
 import {
   upsertHeroSlide, deleteHeroSlide, uploadHeroImage, updateSiteStat,
-  upsertSidebarBanner, deleteSidebarBanner,
+  upsertSidebarBanner, deleteSidebarBanner, uploadBannerImage,
 } from '@/app/actions/site-content'
 
 const EMPTY_SLIDE: Partial<HeroSlide> = {
@@ -77,41 +77,56 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
   const [banners,    setBanners]    = useState<SidebarBanner[]>(initialBanners)
   const [panelOpen,  setPanelOpen]  = useState(false)
   const [editing,    setEditing]    = useState<Omit<SidebarBanner, 'updated_at'> & { id?: string }>({ ...EMPTY_BANNER })
+  const [imageFile,  setImageFile]  = useState<File | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   function openNew() {
     setEditing({ ...EMPTY_BANNER, sort_order: banners.length })
-    setErrorMsg(null)
-    setPanelOpen(true)
+    setImageFile(null); setErrorMsg(null); setPanelOpen(true)
   }
 
   function openEdit(b: SidebarBanner) {
     setEditing({ ...b })
-    setErrorMsg(null)
-    setPanelOpen(true)
+    setImageFile(null); setErrorMsg(null); setPanelOpen(true)
   }
 
-  function closePanel() { setPanelOpen(false) }
+  function closePanel() { setPanelOpen(false); setImageFile(null) }
 
   async function handleSave() {
     if (!editing.title || !editing.link_url) return
     setSaving(true); setErrorMsg(null)
     try {
-      const { data, error } = await upsertSidebarBanner({
+      // 1. Upsert row first to get/reuse id
+      const payload = {
         ...editing,
         image_url:   editing.image_url?.trim() || null,
         button_code: editing.button_code?.trim() || null,
         description: editing.description?.trim() || null,
-      })
-      if (error) { setErrorMsg(error); return }
-      if (data) {
-        setBanners(prev =>
-          editing.id
-            ? prev.map(b => b.id === data.id ? data as SidebarBanner : b)
-            : [...prev, data as SidebarBanner].sort((a, b) => a.sort_order - b.sort_order)
-        )
       }
+      const { data, error } = await upsertSidebarBanner(payload)
+      if (error) { setErrorMsg(error); return }
+      const saved = data as SidebarBanner
+
+      // 2. Upload image if a file was selected
+      if (imageFile && saved?.id) {
+        const fd = new FormData()
+        fd.append('image', imageFile)
+        const { url, error: uploadErr } = await uploadBannerImage(saved.id, fd)
+        if (uploadErr) { setErrorMsg(uploadErr); return }
+        if (url) {
+          // Persist image_url back to the row
+          const { data: updated } = await upsertSidebarBanner({ ...saved, image_url: url })
+          if (updated) Object.assign(saved, updated)
+        }
+      }
+
+      setBanners(prev =>
+        editing.id
+          ? prev.map(b => b.id === saved.id ? saved : b)
+          : [...prev, saved].sort((a, b) => a.sort_order - b.sort_order)
+      )
       closePanel()
     } finally { setSaving(false) }
   }
@@ -204,12 +219,33 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                 <div className="p-6 space-y-4 border-r border-gray-100">
                   {errorMsg && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{errorMsg}</div>}
 
-                  <Field label="Image de la marque (URL) *">
-                    <input value={editing.image_url ?? ''} onChange={e => setEditing(p => ({ ...p, image_url: e.target.value }))} className="input-base" placeholder="https://..." />
-                    <p className="text-xs text-gray-400 mt-1">Image affichée dans le carrousel (ratio 16/9 recommandé). Laissez vide pour un style texte.</p>
-                    {editing.image_url && (
+                  <Field label="Image de la marque">
+                    {/* File upload */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <button type="button" onClick={() => fileRef.current?.click()} className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 shrink-0">
+                        📁 {imageFile ? imageFile.name : 'Choisir un fichier'}
+                      </button>
+                      {imageFile && <button type="button" onClick={() => setImageFile(null)} className="text-xs text-gray-400 hover:text-red-500">✕ retirer</button>}
+                      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { setImageFile(e.target.files?.[0] ?? null); e.target.value = '' }} />
+                    </div>
+                    {/* Or paste URL */}
+                    <input
+                      value={editing.image_url ?? ''}
+                      onChange={e => setEditing(p => ({ ...p, image_url: e.target.value }))}
+                      className="input-base"
+                      placeholder="— ou coller une URL d'image —"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Ratio 16/9 recommandé. Laissez vide pour un style texte.</p>
+                    {/* Preview */}
+                    {(imageFile || editing.image_url) && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={editing.image_url} alt="" className="mt-2 w-full rounded-lg border border-gray-200 object-cover" style={{ maxHeight:100 }} onError={e => (e.currentTarget.style.display='none')} />
+                      <img
+                        src={imageFile ? URL.createObjectURL(imageFile) : editing.image_url!}
+                        alt=""
+                        className="mt-2 w-full rounded-lg border border-gray-200 object-cover"
+                        style={{ maxHeight:100 }}
+                        onError={e => (e.currentTarget.style.display='none')}
+                      />
                     )}
                   </Field>
                   <Field label="Badge (ex: Offre exclusive, Partenaire) *">
@@ -251,10 +287,10 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                 <div className="p-6 bg-gray-950 flex flex-col gap-4">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aperçu</p>
                   <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.07)', borderRadius:18, overflow:'hidden' }}>
-                    {editing.image_url ? (
+                    {(imageFile || editing.image_url) ? (
                       <div style={{ width:'100%', aspectRatio:'16/9', background:'#111', position:'relative' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={editing.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} onError={e => (e.currentTarget.style.display='none')} />
+                        <img src={imageFile ? URL.createObjectURL(imageFile) : editing.image_url!} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} onError={e => (e.currentTarget.style.display='none')} />
                         <span style={{ position:'absolute', top:8, left:8, padding:'3px 8px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.15em', color:'#fff', background:'rgba(0,0,0,.55)', backdropFilter:'blur(8px)', borderRadius:4 }}>
                           {editing.label || 'Badge'}
                         </span>
