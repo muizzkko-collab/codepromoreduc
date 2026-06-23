@@ -72,6 +72,7 @@ export interface SidebarBanner {
   label: string
   title: string
   description: string | null
+  image_url: string | null
   button_label: string
   button_code: string | null
   link_url: string

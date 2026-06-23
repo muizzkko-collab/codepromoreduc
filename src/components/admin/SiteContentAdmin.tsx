@@ -18,6 +18,7 @@ const EMPTY_BANNER: Omit<SidebarBanner, 'id' | 'updated_at'> = {
   label: 'Offre exclusive',
   title: '',
   description: '',
+  image_url: '',
   button_label: 'Voir l\'offre',
   button_code: '',
   link_url: '/',
@@ -99,6 +100,7 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
     try {
       const { data, error } = await upsertSidebarBanner({
         ...editing,
+        image_url:   editing.image_url?.trim() || null,
         button_code: editing.button_code?.trim() || null,
         description: editing.description?.trim() || null,
       })
@@ -202,14 +204,22 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                 <div className="p-6 space-y-4 border-r border-gray-100">
                   {errorMsg && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{errorMsg}</div>}
 
+                  <Field label="Image de la marque (URL) *">
+                    <input value={editing.image_url ?? ''} onChange={e => setEditing(p => ({ ...p, image_url: e.target.value }))} className="input-base" placeholder="https://..." />
+                    <p className="text-xs text-gray-400 mt-1">Image affichée dans le carrousel (ratio 16/9 recommandé). Laissez vide pour un style texte.</p>
+                    {editing.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={editing.image_url} alt="" className="mt-2 w-full rounded-lg border border-gray-200 object-cover" style={{ maxHeight:100 }} onError={e => (e.currentTarget.style.display='none')} />
+                    )}
+                  </Field>
                   <Field label="Badge (ex: Offre exclusive, Partenaire) *">
                     <input value={editing.label} onChange={e => setEditing(p => ({ ...p, label: e.target.value }))} className="input-base" placeholder="Offre exclusive" />
                   </Field>
-                  <Field label="Titre *">
+                  <Field label="Titre affiché sous l'image *">
                     <input value={editing.title} onChange={e => setEditing(p => ({ ...p, title: e.target.value }))} className="input-base" placeholder="Ex: Économisez 20% chez Nike" />
                   </Field>
-                  <Field label="Description (optionnelle)">
-                    <textarea value={editing.description ?? ''} onChange={e => setEditing(p => ({ ...p, description: e.target.value }))} rows={3} className="input-base resize-none" placeholder="Courte description de l'offre..." />
+                  <Field label="Description (optionnelle — affichée si pas d'image)">
+                    <textarea value={editing.description ?? ''} onChange={e => setEditing(p => ({ ...p, description: e.target.value }))} rows={2} className="input-base resize-none" placeholder="Courte description de l'offre..." />
                   </Field>
                   <Field label="Texte du bouton *">
                     <input value={editing.button_label} onChange={e => setEditing(p => ({ ...p, button_label: e.target.value }))} className="input-base" placeholder="Voir l'offre" />
@@ -240,28 +250,40 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                 {/* Live preview */}
                 <div className="p-6 bg-gray-950 flex flex-col gap-4">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aperçu</p>
-                  <div style={{ background:'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))', border:'1px solid rgba(255,255,255,.08)', borderRadius:18, padding:18, position:'relative', overflow:'hidden' }}>
-                    <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
-                    <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
-                      {editing.label || 'Badge'}
-                    </span>
-                    <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{editing.title || 'Titre de la bannière'}</h4>
-                    {editing.description && (
-                      <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{editing.description}</p>
-                    )}
-                    {previewCode ? (
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <div style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center' }}>
-                          <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{editing.button_label}</div>
-                          <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{previewCode.toUpperCase()}</div>
-                        </div>
-                        <div style={{ padding:'9px 12px', background:'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', whiteSpace:'nowrap' }}>Copier</div>
+                  <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.07)', borderRadius:18, overflow:'hidden' }}>
+                    {editing.image_url ? (
+                      <div style={{ width:'100%', aspectRatio:'16/9', background:'#111', position:'relative' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={editing.image_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} onError={e => (e.currentTarget.style.display='none')} />
+                        <span style={{ position:'absolute', top:8, left:8, padding:'3px 8px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.15em', color:'#fff', background:'rgba(0,0,0,.55)', backdropFilter:'blur(8px)', borderRadius:4 }}>
+                          {editing.label || 'Badge'}
+                        </span>
                       </div>
                     ) : (
-                      <div style={{ width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center' }}>
-                        {editing.button_label || 'Voir l\'offre'}
+                      <div style={{ padding:'14px 14px 0' }}>
+                        <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:10 }}>
+                          {editing.label || 'Badge'}
+                        </span>
+                        <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 6px' }}>{editing.title || 'Titre'}</h4>
+                        {editing.description && <p style={{ fontSize:12, color:'rgba(255,255,255,.5)', margin:'0 0 4px', lineHeight:1.5 }}>{editing.description}</p>}
                       </div>
                     )}
+                    <div style={{ padding:12 }}>
+                      {editing.image_url && <p style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,.8)', margin:'0 0 10px' }}>{editing.title || 'Titre'}</p>}
+                      {previewCode ? (
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <div style={{ flex:1, padding:'9px 10px', background:'rgba(20,184,166,.08)', border:'1px solid rgba(20,184,166,.25)', borderRadius:10, textAlign:'center' }}>
+                            <div style={{ fontSize:9, color:'rgba(255,255,255,.4)', textTransform:'uppercase', letterSpacing:'.12em', marginBottom:2 }}>{editing.button_label}</div>
+                            <div style={{ fontSize:13, fontWeight:900, color:'#5eead4', letterSpacing:'.08em', fontFamily:'monospace' }}>{previewCode.toUpperCase()}</div>
+                          </div>
+                          <div style={{ padding:'9px 12px', background:'rgba(20,184,166,.2)', border:'1px solid rgba(20,184,166,.4)', borderRadius:10, fontSize:10, fontWeight:800, color:'#5eead4', whiteSpace:'nowrap' }}>Copier</div>
+                        </div>
+                      ) : (
+                        <div style={{ width:'100%', padding:'11px 12px', background:'linear-gradient(135deg,rgba(20,184,166,.15),rgba(59,130,246,.1))', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center' }}>
+                          {editing.button_label || 'Voir l\'offre'}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

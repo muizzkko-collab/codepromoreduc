@@ -729,7 +729,8 @@ const FALLBACK_BANNER: SidebarBanner = {
   id: 'fallback',
   label: 'Partenaire officiel',
   title: 'Économisez jusqu\'à 70%',
-  description: 'Découvrez des milliers de codes promo vérifiés et des offres exclusives chaque jour.',
+  description: null,
+  image_url: null,
   button_label: 'Voir toutes les offres',
   button_code: null,
   link_url: '/all-stores/',
@@ -739,70 +740,93 @@ const FALLBACK_BANNER: SidebarBanner = {
 }
 
 function SidebarBannerCarousel({ banners }: { banners: SidebarBanner[] }) {
-  const [idx, setIdx]     = useState(0)
-  const [anim, setAnim]   = useState(true)
-  const timerRef          = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [idx, setIdx]   = useState(0)
+  const [anim, setAnim] = useState(true)
+  const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function goTo(next: number) {
     setAnim(false)
-    setTimeout(() => {
-      setIdx(next)
-      setAnim(true)
-    }, 200)
+    setTimeout(() => { setIdx(next); setAnim(true) }, 200)
   }
 
   useEffect(() => {
     if (banners.length <= 1) return
-    timerRef.current = setInterval(() => {
-      goTo((idx + 1) % banners.length)
-    }, 7000)
+    timerRef.current = setInterval(() => goTo((idx + 1) % banners.length), 7000)
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [idx, banners.length])
-
-  const banner = banners[idx]
-  const [copied, setCopied] = useState(false)
-  const code = banner.button_code?.trim()
-
-  function copyCode() {
-    if (!code) return
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
 
   function handleDotClick(i: number) {
     if (timerRef.current) clearInterval(timerRef.current)
     goTo(i)
   }
 
+  const banner = banners[idx]
+
   return (
     <div>
-      {/* Banner card */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg,rgba(20,184,166,.1),rgba(8,10,15,.96),rgba(59,130,246,.1))',
-          border: '1px solid rgba(255,255,255,.08)',
-          borderRadius: 18,
-          padding: 18,
-          position: 'relative',
-          overflow: 'hidden',
-          transition: 'opacity 200ms ease',
-          opacity: anim ? 1 : 0,
-        }}
-      >
-        <div style={{ position:'absolute', top:-30, right:-30, width:100, height:100, background:'rgba(20,184,166,.15)', borderRadius:'50%', filter:'blur(24px)', pointerEvents:'none' }} />
+      <div style={{ opacity: anim ? 1 : 0, transition: 'opacity 200ms ease' }}>
+        <BannerCard banner={banner} />
+      </div>
+      {banners.length > 1 && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:10 }}>
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => handleDotClick(i)}
+              aria-label={`Bannière ${i + 1}`}
+              style={{ width: i === idx ? 18 : 6, height:6, borderRadius:999, background: i === idx ? '#5eead4' : 'rgba(255,255,255,.18)', border:'none', padding:0, cursor:'pointer', transition:'all 300ms ease' }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
-        <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:12 }}>
-          {banner.label}
-        </span>
+function BannerCard({ banner }: { banner: SidebarBanner }) {
+  const [copied, setCopied] = useState(false)
+  const code = banner.button_code?.trim()
 
-        <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 8px' }}>{banner.title}</h4>
+  function copyCode() {
+    if (!code) return
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
-        {banner.description && (
-          <p style={{ fontSize:12, color:'rgba(255,255,255,.55)', margin:'0 0 14px', lineHeight:1.5 }}>{banner.description}</p>
+  return (
+    <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.07)', borderRadius:18, overflow:'hidden' }}>
+      {/* Brand image */}
+      {banner.image_url ? (
+        <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'#fff', position:'relative' }}>
+          <img
+            src={banner.image_url}
+            alt={banner.title}
+            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+          />
+          {/* Label badge over image */}
+          <span style={{ position:'absolute', top:10, left:10, padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#fff', background:'rgba(0,0,0,.55)', backdropFilter:'blur(8px)', borderRadius:4 }}>
+            {banner.label}
+          </span>
+        </div>
+      ) : (
+        /* No image — text-only fallback */
+        <div style={{ padding:'16px 16px 0' }}>
+          <span style={{ padding:'3px 9px', fontSize:8, fontWeight:900, textTransform:'uppercase', letterSpacing:'.18em', color:'#5eead4', border:'1px solid rgba(20,184,166,.3)', background:'rgba(20,184,166,.1)', borderRadius:4, display:'inline-block', marginBottom:10 }}>
+            {banner.label}
+          </span>
+          <h4 style={{ fontSize:14, fontWeight:900, color:'#fff', margin:'0 0 6px' }}>{banner.title}</h4>
+          {banner.description && (
+            <p style={{ fontSize:12, color:'rgba(255,255,255,.5)', margin:'0 0 4px', lineHeight:1.5 }}>{banner.description}</p>
+          )}
+        </div>
+      )}
+
+      {/* CTA area */}
+      <div style={{ padding:12 }}>
+        {banner.image_url && (
+          <p style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,.8)', margin:'0 0 10px', lineHeight:1.4 }}>{banner.title}</p>
         )}
-
         {code ? (
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <a
@@ -826,35 +850,12 @@ function SidebarBannerCarousel({ banners }: { banners: SidebarBanner[] }) {
             href={banner.link_url}
             target="_blank"
             rel="noopener noreferrer sponsored"
-            style={{ display:'block', width:'100%', padding:'11px 12px', background:'rgba(20,184,166,.1)', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center', textDecoration:'none' }}
+            style={{ display:'block', width:'100%', padding:'11px 12px', background:'linear-gradient(135deg,rgba(20,184,166,.15),rgba(59,130,246,.1))', border:'1px solid rgba(20,184,166,.3)', color:'#5eead4', fontWeight:800, fontSize:11, textTransform:'uppercase', letterSpacing:'.12em', borderRadius:11, textAlign:'center', textDecoration:'none', boxSizing:'border-box' }}
           >
             {banner.button_label}
           </a>
         )}
       </div>
-
-      {/* Dot indicators — only when 2+ banners */}
-      {banners.length > 1 && (
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:10 }}>
-          {banners.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => handleDotClick(i)}
-              aria-label={`Bannière ${i + 1}`}
-              style={{
-                width: i === idx ? 18 : 6,
-                height: 6,
-                borderRadius: 999,
-                background: i === idx ? '#5eead4' : 'rgba(255,255,255,.18)',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                transition: 'all 300ms ease',
-              }}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }
