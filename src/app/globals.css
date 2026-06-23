@@ -259,6 +259,79 @@
   .bg-section { background-color: #0c1017; }
 }
 
+/* ── Admin panel dark theme overrides ─────────────────────────────────────── */
+.admin-panel {
+  background: #060810;
+  color: rgba(255,255,255,.85);
+  min-height: 100vh;
+}
+
+/* Cards / panels */
+.admin-panel .bg-white          { background: rgba(255,255,255,.03) !important; }
+.admin-panel .bg-gray-50        { background: rgba(255,255,255,.02) !important; }
+.admin-panel .bg-gray-100       { background: rgba(255,255,255,.04) !important; }
+.admin-panel .bg-gray-950       { background: rgba(0,0,0,.4) !important; }
+
+/* Borders */
+.admin-panel .border-gray-100,
+.admin-panel .border-gray-200   { border-color: rgba(255,255,255,.07) !important; }
+.admin-panel [class*="divide-gray"] > * + * { border-color: rgba(255,255,255,.06) !important; }
+
+/* Text */
+.admin-panel .text-navy         { color: #fff !important; }
+.admin-panel .text-gray-800     { color: rgba(255,255,255,.85) !important; }
+.admin-panel .text-gray-700     { color: rgba(255,255,255,.7) !important; }
+.admin-panel .text-gray-600     { color: rgba(255,255,255,.55) !important; }
+.admin-panel .text-gray-500     { color: rgba(255,255,255,.45) !important; }
+.admin-panel .text-gray-400     { color: rgba(255,255,255,.35) !important; }
+
+/* Table */
+.admin-panel thead tr           { background: rgba(255,255,255,.025) !important; }
+.admin-panel th                 { color: rgba(255,255,255,.4) !important; }
+.admin-panel .hover\:bg-gray-50:hover { background: rgba(255,255,255,.04) !important; }
+
+/* Form elements */
+.admin-panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.admin-panel textarea,
+.admin-panel select {
+  background: rgba(255,255,255,.05) !important;
+  border-color: rgba(255,255,255,.1) !important;
+  color: rgba(255,255,255,.9) !important;
+}
+.admin-panel input::placeholder,
+.admin-panel textarea::placeholder { color: rgba(255,255,255,.28) !important; }
+.admin-panel input:focus,
+.admin-panel textarea:focus,
+.admin-panel select:focus         { border-color: rgba(56,189,248,.5) !important; outline: none; }
+.admin-panel input[type="checkbox"],
+.admin-panel input[type="radio"]  { accent-color: #38bdf8; }
+.admin-panel select option        { background: #0f1623; color: #fff; }
+
+/* Shadows & hover */
+.admin-panel .shadow-md          { box-shadow: 0 4px 20px rgba(0,0,0,.4) !important; }
+.admin-panel .hover\:shadow-md:hover { box-shadow: 0 4px 20px rgba(56,189,248,.08) !important; }
+
+/* Rounded cards */
+.admin-panel .rounded-xl         { border-radius: 16px !important; }
+
+/* Error / success alerts inside admin */
+.admin-panel .bg-red-50          { background: rgba(239,68,68,.1) !important; }
+.admin-panel .border-red-200     { border-color: rgba(239,68,68,.3) !important; }
+.admin-panel .text-red-600       { color: #f87171 !important; }
+.admin-panel .bg-green-50        { background: rgba(16,185,129,.1) !important; }
+.admin-panel .border-green-200   { border-color: rgba(16,185,129,.3) !important; }
+.admin-panel .text-green-700     { color: #34d399 !important; }
+
+/* Primary button stays cyan */
+.admin-panel .bg-primary         { background: #38bdf8 !important; color: #060810 !important; }
+.admin-panel .hover\:bg-primary-dark:hover { background: #0ea5e9 !important; }
+
+/* Teal accent for banner tab */
+.admin-panel .text-teal-600      { color: #2dd4bf !important; }
+.admin-panel .bg-teal-50         { background: rgba(20,184,166,.08) !important; }
+.admin-panel .border-teal-200    { border-color: rgba(20,184,166,.2) !important; }
+.admin-panel .text-teal-700      { color: #5eead4 !important; }
+
 @layer components {
   .glass-card {
     background: rgba(255, 255, 255, 0.03);
@@ -329,9 +402,14 @@
     100% { transform: translateX(300%) skewX(12deg); }
   }
 
-  /* Admin panel keeps a light surface regardless of public site theme */
-  .admin-surface { @apply bg-gray-50 text-gray-800; }
+  /* Admin panel dark theme */
+  .admin-surface { background: #0b0d14; color: rgba(255,255,255,.85); }
   .input-base {
-    @apply w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 transition-shadow text-gray-800 bg-white;
+    @apply w-full rounded-lg px-3 py-2 text-sm outline-none transition-shadow;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.9);
   }
+  .input-base::placeholder { color: rgba(255,255,255,.3); }
+  .input-base:focus { border-color: rgba(56,189,248,.5); box-shadow: 0 0 0 2px rgba(56,189,248,.12); }
 }

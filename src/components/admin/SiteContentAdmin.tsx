@@ -48,14 +48,14 @@ export function SiteContentAdmin({
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-navy">{tr.siteContent}</h1>
+      <h1 style={{ fontSize:22, fontWeight:900, color:'#fff', margin:'0 0 4px', letterSpacing:'-.02em' }}>{tr.siteContent}</h1>
 
-      <div className="flex border-b border-gray-200">
+      <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,.07)' }}>
         {tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-5 py-3 text-sm font-medium border-b-2 ${tab === t.key ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+            style={{ padding:'12px 20px', fontSize:13, fontWeight: tab === t.key ? 700 : 500, background:'none', border:'none', borderBottom: tab === t.key ? '2px solid #38bdf8' : '2px solid transparent', color: tab === t.key ? '#38bdf8' : 'rgba(255,255,255,.45)', cursor:'pointer', transition:'all 200ms ease', marginBottom:-1 }}
           >
             {t.label}
           </button>

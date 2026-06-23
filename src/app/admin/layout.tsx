@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <LangProvider>
       <PermissionsProvider value={{ email: profile?.email ?? '', permissions: profile?.permissions ?? {} }}>
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="admin-panel flex min-h-screen">
           <AdminSidebar />
           <main className="flex-1 overflow-auto">
             {children}
