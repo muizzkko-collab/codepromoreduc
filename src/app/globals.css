@@ -332,6 +332,18 @@
 .admin-panel .border-teal-200    { border-color: rgba(20,184,166,.2) !important; }
 .admin-panel .text-teal-700      { color: #5eead4 !important; }
 
+/* Slide panels / modals — must be solid, not transparent */
+.admin-panel [role="dialog"] .bg-white,
+.admin-panel [role="dialog"] .bg-gray-50 { background: #0d1623 !important; }
+/* Backdrop overlay */
+.admin-panel .bg-black\/40        { background: rgba(0,0,0,.65) !important; }
+.admin-panel .bg-black\/60        { background: rgba(0,0,0,.75) !important; }
+/* Blue info box inside panels keep their colour */
+.admin-panel [role="dialog"] .bg-blue-50  { background: rgba(59,130,246,.12) !important; }
+.admin-panel [role="dialog"] .border-blue-100 { border-color: rgba(59,130,246,.25) !important; }
+.admin-panel [role="dialog"] .text-blue-700   { color: #7dd3fc !important; }
+.admin-panel [role="dialog"] .text-blue-400   { color: #38bdf8 !important; }
+
 @layer components {
   .glass-card {
     background: rgba(255, 255, 255, 0.03);
