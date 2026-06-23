@@ -29,7 +29,7 @@ export function Header({ categories, topStores }: Props) {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
             <Link href="/" className="shrink-0 flex items-center" aria-label="Codepromoreduc — Accueil">
-              <LogoNav width={180} />
+              <LogoNav width={220} />
             </Link>
 
             {/* Mega menu */}
