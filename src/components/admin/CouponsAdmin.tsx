@@ -240,7 +240,7 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
 
       {/* Side panel */}
       {panelOpen && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
           <div className="flex-1 bg-black/40" onClick={closePanel} />
           <div className="w-full max-w-md bg-white shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">

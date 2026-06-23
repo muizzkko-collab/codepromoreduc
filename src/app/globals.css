@@ -334,7 +334,9 @@
 
 /* Slide panels / modals — must be solid, not transparent */
 .admin-panel [role="dialog"] .bg-white,
-.admin-panel [role="dialog"] .bg-gray-50 { background: #0d1623 !important; }
+.admin-panel [role="dialog"] .bg-gray-50,
+.admin-panel .fixed .bg-white,
+.admin-panel .fixed .bg-gray-50 { background: #0d1623 !important; }
 /* Backdrop overlay */
 .admin-panel .bg-black\/40        { background: rgba(0,0,0,.65) !important; }
 .admin-panel .bg-black\/60        { background: rgba(0,0,0,.75) !important; }
