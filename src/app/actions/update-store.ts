@@ -5,7 +5,6 @@ import { getPromotions as getKwPromotions } from '@/lib/networks/kwanko'
 import { getPromotions as getEffPromotions } from '@/lib/networks/effiliation'
 import { getPromotions as getTDPromotions } from '@/lib/networks/tradedoubler'
 import Anthropic from '@anthropic-ai/sdk'
-import FirecrawlApp from '@mendable/firecrawl-js'
 
 export interface UpdateResult {
   store_name: string
@@ -126,33 +125,40 @@ interface ExtractedCoupon {
   expiry: string | null
 }
 
+async function firecrawlScrape(url: string): Promise<string> {
+  const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url, formats: ['markdown'] }),
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!res.ok) return ''
+  const json = await res.json()
+  return (json?.data?.markdown as string) ?? ''
+}
+
 async function scrapeWithFirecrawlAndClaude(storeName: string, storeSlug: string): Promise<ExtractedCoupon[]> {
-  const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! })
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
   // Try each coupon site until we get content
   let markdown = ''
   for (const urlFn of COUPON_SITES) {
-    const url = urlFn(storeSlug)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result: any = await firecrawl.scrapeUrl(url, { formats: ['markdown'] })
-      if (result?.markdown && (result.markdown as string).length > 200) {
-        markdown = result.markdown as string
-        break
-      }
+      const md = await firecrawlScrape(urlFn(storeSlug))
+      if (md.length > 200) { markdown = md; break }
     } catch {
       continue
     }
   }
 
-  // If Firecrawl failed all sites, try search on radins.com
+  // Fallback: search on radins.com
   if (!markdown) {
     try {
       const searchUrl = `https://www.radins.com/codes-promo/recherche/?q=${encodeURIComponent(storeName)}`
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result: any = await firecrawl.scrapeUrl(searchUrl, { formats: ['markdown'] })
-      if (result?.markdown) markdown = result.markdown as string
+      markdown = await firecrawlScrape(searchUrl)
     } catch {
       return []
     }
