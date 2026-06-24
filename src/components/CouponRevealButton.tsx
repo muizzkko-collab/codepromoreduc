@@ -103,18 +103,40 @@ export function CouponRevealButton({
   }
 
   /* ── Homepage variant ───────────────────────────────────────────────── */
+  const glassBase = {
+    background:    featured ? 'rgba(245,158,11,.13)' : 'rgba(255,255,255,.07)',
+    border:        featured ? '1px solid rgba(245,158,11,.35)' : '1px solid rgba(255,255,255,.18)',
+    color:         featured ? '#fde68a' : 'rgba(255,255,255,.9)',
+    boxShadow:     'inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.12)',
+    backdropFilter:'blur(22px) saturate(180%)',
+    WebkitBackdropFilter: 'blur(22px) saturate(180%)',
+  }
   return (
     <button
       onClick={handleActivate}
-      className="hp-btn w-full flex items-center justify-center gap-2 rounded-2xl font-extrabold text-xs uppercase tracking-wider"
-      style={{
-        padding: '12px 14px',
-        backdropFilter: 'blur(18px)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.14)',
-        background: featured ? 'rgba(245,158,11,.1)'           : 'rgba(255,255,255,.05)',
-        border:     featured ? '1px solid rgba(245,158,11,.38)' : '1px solid rgba(255,255,255,.14)',
-        color:      featured ? '#fde68a' : '#fff',
-        cursor: 'pointer',
+      className="w-full flex items-center justify-center gap-2 rounded-2xl font-extrabold text-xs uppercase tracking-wider"
+      style={{ padding: '12px 14px', cursor: 'pointer', transition: 'transform 130ms ease, box-shadow 130ms ease, background 130ms ease, border-color 130ms ease', ...glassBase }}
+      onMouseEnter={e => {
+        const b = e.currentTarget
+        if (featured) {
+          b.style.background = 'rgba(245,158,11,.45)'
+          b.style.borderColor = 'rgba(245,158,11,.8)'
+          b.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,.3), 0 0 0 3px rgba(245,158,11,.35), 0 12px 36px rgba(245,158,11,.45)'
+        } else {
+          b.style.background = 'rgba(56,189,248,.25)'
+          b.style.borderColor = 'rgba(56,189,248,.7)'
+          b.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,.3), 0 0 0 3px rgba(56,189,248,.3), 0 12px 36px rgba(56,189,248,.45)'
+        }
+        b.style.transform = 'translateY(-3px) scale(1.04)'
+        b.style.color = '#fff'
+      }}
+      onMouseLeave={e => {
+        const b = e.currentTarget
+        b.style.background = glassBase.background
+        b.style.borderColor = featured ? 'rgba(245,158,11,.35)' : 'rgba(255,255,255,.18)'
+        b.style.boxShadow = glassBase.boxShadow
+        b.style.transform = ''
+        b.style.color = glassBase.color
       }}
     >
       <ChevronRight size={12} />

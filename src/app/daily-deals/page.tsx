@@ -44,22 +44,37 @@ function extractDiscount(discountValue: string | null | undefined, title: string
   return "Offre"
 }
 
+const glassCard: React.CSSProperties = {
+  background: "rgba(255,255,255,.07)",
+  backdropFilter: "blur(24px) saturate(180%)",
+  WebkitBackdropFilter: "blur(24px) saturate(180%)",
+  border: "1px solid rgba(255,255,255,.15)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,.2), 0 4px 28px rgba(0,0,0,.38)",
+  borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column",
+}
+const glassStore: React.CSSProperties = {
+  background: "rgba(255,255,255,.07)",
+  backdropFilter: "blur(24px) saturate(180%)",
+  WebkitBackdropFilter: "blur(24px) saturate(180%)",
+  border: "1px solid rgba(255,255,255,.15)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 18px rgba(0,0,0,.3)",
+  borderRadius: 14, textAlign: "center" as const, padding: "14px 10px",
+}
+
 const hoverCSS = `
   .d-card{transition:transform 170ms ease,box-shadow 170ms ease,border-color 170ms ease;}
-  .d-card:hover{transform:translateY(-5px) scale(1.018);box-shadow:0 20px 52px rgba(56,189,248,.22);border-color:rgba(56,189,248,.4)!important;}
+  .d-card:hover{transform:translateY(-5px) scale(1.018);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 52px rgba(56,189,248,.25);border-color:rgba(56,189,248,.45)!important;}
   .d-deal-card{transition:transform 170ms ease,box-shadow 170ms ease,border-color 170ms ease;}
-  .d-deal-card:hover{transform:translateY(-5px) scale(1.018);box-shadow:0 20px 52px rgba(16,185,129,.22);border-color:rgba(16,185,129,.4)!important;}
+  .d-deal-card:hover{transform:translateY(-5px) scale(1.018);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 52px rgba(16,185,129,.25);border-color:rgba(16,185,129,.45)!important;}
   .d-store-card{transition:transform 150ms ease,box-shadow 150ms ease,border-color 150ms ease;}
-  .d-store-card:hover{transform:translateY(-4px) scale(1.06);box-shadow:0 12px 36px rgba(56,189,248,.18);border-color:rgba(56,189,248,.35)!important;}
+  .d-store-card:hover{transform:translateY(-4px) scale(1.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 12px 36px rgba(56,189,248,.2);border-color:rgba(56,189,248,.4)!important;}
   .d-banner-card{transition:transform 170ms ease,box-shadow 170ms ease;}
-  .d-banner-card:hover{transform:translateY(-6px);box-shadow:0 24px 64px rgba(56,189,248,.28);}
-  .d-btn{transition:transform 130ms ease,box-shadow 130ms ease,filter 130ms ease;}
-  .d-btn:hover{transform:translateY(-3px) scale(1.06);box-shadow:0 10px 36px rgba(56,189,248,.55);filter:brightness(1.14);}
-  .d-banner-btn{transition:transform 130ms ease,box-shadow 130ms ease,filter 130ms ease;}
-  .d-banner-btn:hover{transform:scale(1.07);box-shadow:0 10px 40px rgba(56,189,248,.6);filter:brightness(1.12);}
+  .d-banner-card:hover{transform:translateY(-6px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 24px 64px rgba(56,189,248,.32);}
   .d-nav-link{transition:transform 130ms ease,background 130ms ease,border-color 130ms ease;}
   .d-nav-link:hover{transform:translateY(-2px);background:rgba(56,189,248,.1)!important;border-color:rgba(56,189,248,.3)!important;}
 `
+
+
 
 export default async function DailyDealsPage() {
   const supabase = await createClient()
@@ -168,7 +183,7 @@ export default async function DailyDealsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 12 }}>
                 {stores.map(store => (
                   <Link key={store.id} href={`/store/${store.slug}/`} style={{ textDecoration: "none" }}>
-                    <div className="d-store-card" style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, textAlign: "center", padding: "14px 10px" }}>
+                    <div className="d-store-card" style={glassStore}>
                       {store.logo_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={store.logo_url} alt={store.name} style={{ width: 44, height: 44, objectFit: "contain", margin: "0 auto 8px", borderRadius: 8, background: "rgba(255,255,255,.08)" }} />
@@ -192,7 +207,7 @@ export default async function DailyDealsPage() {
                 {coupons.map(coupon => {
                   const badge = extractDiscount(coupon.discount_value, coupon.title, coupon.type ?? "code")
                   return (
-                    <div key={coupon.id} className="d-card" style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column" }}>
+                    <div key={coupon.id} className="d-card" style={glassCard}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                         <Logo name={coupon.store?.name ?? ""} url={coupon.store?.logo_url} />
                         <span style={{ fontSize: 12, color: "rgba(255,255,255,.55)", fontWeight: 600, flex: 1 }}>{coupon.store?.name}</span>
@@ -204,16 +219,14 @@ export default async function DailyDealsPage() {
                           <Clock style={{ width: 11, height: 11 }} />Expire le {formatDate(coupon.expiry_date)}
                         </p>
                       )}
-                      <div className="d-btn">
-                        <CouponRevealButton
-                          couponId={coupon.id} couponCode={coupon.code} couponTitle={coupon.title}
-                          discountValue={coupon.discount_value ?? ""}
-                          couponType={(coupon.type as "code" | "deal" | "free_shipping") ?? "code"}
-                          storeLogoUrl={coupon.store?.logo_url ?? null} storeName={coupon.store?.name ?? ""} storeSlug={coupon.store?.slug}
-                          affiliateUrl={resolveAffiliateUrl(coupon.destination_url, coupon.store?.affiliate_url, coupon.store?.slug ?? "")}
-                          expiryDate={coupon.expiry_date}
-                        />
-                      </div>
+                      <CouponRevealButton
+                        couponId={coupon.id} couponCode={coupon.code} couponTitle={coupon.title}
+                        discountValue={coupon.discount_value ?? ""}
+                        couponType={(coupon.type as "code" | "deal" | "free_shipping") ?? "code"}
+                        storeLogoUrl={coupon.store?.logo_url ?? null} storeName={coupon.store?.name ?? ""} storeSlug={coupon.store?.slug}
+                        affiliateUrl={resolveAffiliateUrl(coupon.destination_url, coupon.store?.affiliate_url, coupon.store?.slug ?? "")}
+                        expiryDate={coupon.expiry_date}
+                      />
                     </div>
                   )
                 })}
@@ -229,7 +242,7 @@ export default async function DailyDealsPage() {
                 {deals.map(deal => {
                   const badge = extractDiscount(deal.discount_value, deal.title, deal.type ?? "deal")
                   return (
-                    <div key={deal.id} className="d-deal-card" style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: "16px", display: "flex", flexDirection: "column" }}>
+                    <div key={deal.id} className="d-deal-card" style={{ ...glassCard, border: "1px solid rgba(16,185,129,.15)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                         <Logo name={deal.store?.name ?? ""} url={deal.store?.logo_url} accent="#10b981" bg="rgba(16,185,129,.15)" />
                         <span style={{ fontSize: 12, color: "rgba(255,255,255,.55)", fontWeight: 600, flex: 1 }}>{deal.store?.name}</span>
@@ -241,15 +254,13 @@ export default async function DailyDealsPage() {
                           <Clock style={{ width: 11, height: 11 }} />Expire le {formatDate(deal.expiry_date)}
                         </p>
                       )}
-                      <div className="d-btn">
-                        <CouponRevealButton
-                          couponId={deal.id} couponCode={null} couponTitle={deal.title}
-                          discountValue={deal.discount_value ?? ""} couponType="deal"
-                          storeLogoUrl={deal.store?.logo_url ?? null} storeName={deal.store?.name ?? ""} storeSlug={deal.store?.slug}
-                          affiliateUrl={resolveAffiliateUrl(deal.destination_url, deal.store?.affiliate_url, deal.store?.slug ?? "")}
-                          expiryDate={deal.expiry_date}
-                        />
-                      </div>
+                      <CouponRevealButton
+                        couponId={deal.id} couponCode={null} couponTitle={deal.title}
+                        discountValue={deal.discount_value ?? ""} couponType="deal"
+                        storeLogoUrl={deal.store?.logo_url ?? null} storeName={deal.store?.name ?? ""} storeSlug={deal.store?.slug}
+                        affiliateUrl={resolveAffiliateUrl(deal.destination_url, deal.store?.affiliate_url, deal.store?.slug ?? "")}
+                        expiryDate={deal.expiry_date}
+                      />
                     </div>
                   )
                 })}
@@ -268,7 +279,7 @@ export default async function DailyDealsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
                 {blogPosts.map(post => (
                   <Link key={post.id} href={`/blog/${post.slug}/`} style={{ textDecoration: "none" }}>
-                    <div className="d-store-card" style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: 20 }}>
+                    <div className="d-store-card" style={{ ...glassStore, borderRadius: 16, padding: 20, textAlign: "left" }}>
                       {post.cover_image_url && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={post.cover_image_url} alt={post.title} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 10, marginBottom: 14 }} />

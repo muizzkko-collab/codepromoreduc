@@ -14,7 +14,7 @@ export interface BannerItem {
 }
 
 const hoverCSS = `
-  .bc-btn:hover{transform:scale(1.08);box-shadow:0 10px 40px rgba(56,189,248,.6);filter:brightness(1.12);}
+  .bc-btn:hover{transform:scale(1.06);background:rgba(56,189,248,.45)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 32px rgba(56,189,248,.55)!important;color:#fff!important;}
   .bc-arrow:hover{background:rgba(56,189,248,.25)!important;border-color:rgba(56,189,248,.5)!important;}
   .bc-dot:hover{background:rgba(56,189,248,.6)!important;}
 `
@@ -63,11 +63,14 @@ export function BannerCarousel({ banners, siteUrl }: { banners: BannerItem[]; si
           return (
             <div key={store.id} style={{ position: "relative", borderRadius: 16, overflow: "hidden",
               background: store.popup_banner_url ? `url(${store.popup_banner_url}) center/cover no-repeat` : "linear-gradient(135deg,#0d1e35,#0a2a4a)",
-              border: "1px solid rgba(255,255,255,.1)", minHeight: 160,
-              transition: "transform 170ms ease,box-shadow 170ms ease",
+              backdropFilter: "blur(24px) saturate(180%)",
+              WebkitBackdropFilter: "blur(24px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,.18)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 24px rgba(0,0,0,.4)",
+              minHeight: 160, transition: "transform 170ms ease,box-shadow 170ms ease",
             }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-5px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 20px 52px rgba(56,189,248,.24)" }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = "" }}
+              onMouseEnter={e => { const d = e.currentTarget as HTMLDivElement; d.style.transform = "translateY(-6px)"; d.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,.22), 0 24px 64px rgba(56,189,248,.32)" }}
+              onMouseLeave={e => { const d = e.currentTarget as HTMLDivElement; d.style.transform = ""; d.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,.18), 0 4px 24px rgba(0,0,0,.4)" }}
             >
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom,rgba(4,6,18,.2),rgba(4,6,18,.92))" }} />
               <div style={{ position: "relative", zIndex: 1, padding: "16px", display: "flex", flexDirection: "column", minHeight: 160, boxSizing: "border-box" }}>
@@ -96,7 +99,13 @@ export function BannerCarousel({ banners, siteUrl }: { banners: BannerItem[]; si
                 </div>
                 {/* CTA */}
                 <a href={storeUrl} target="_blank" rel="noopener noreferrer sponsored" className="bc-btn"
-                  style={{ display: "block", textAlign: "center", background: "linear-gradient(90deg,#38bdf8,#818cf8)", color: "#fff", borderRadius: 9, padding: "8px 12px", fontSize: 12, fontWeight: 800, textDecoration: "none", transition: "transform 130ms ease,box-shadow 130ms ease,filter 130ms ease" }}>
+                  style={{ display: "block", textAlign: "center",
+                    background: "rgba(56,189,248,.18)",
+                    backdropFilter: "blur(16px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(16px) saturate(180%)",
+                    border: "1px solid rgba(56,189,248,.45)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,.22)",
+                    color: "#e0f7ff", borderRadius: 9, padding: "8px 12px", fontSize: 12, fontWeight: 800, textDecoration: "none", transition: "transform 130ms ease,box-shadow 130ms ease,background 130ms ease" }}>
                   Voir les offres &#8594;
                 </a>
               </div>
