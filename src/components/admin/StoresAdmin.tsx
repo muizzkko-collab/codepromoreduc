@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useRef, useTransition, useEffect } from 'react'
+import { useState, useMemo, useRef, useTransition, useEffect, useCallback } from 'react'
 import { useLang } from './LangContext'
 import { StoreLogo } from '@/components/StoreLogo'
 import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link, RefreshCw, ExternalLink } from 'lucide-react'
@@ -43,6 +43,13 @@ export function StoresAdmin({ initialStores }: Props) {
   const fileRef                         = useRef<HTMLInputElement>(null)
   const [updatingId, setUpdatingId]     = useState<string | null>(null)
   const [updateToast, setUpdateToast]   = useState<{ msg: string; ok: boolean } | null>(null)
+
+  // Search dropdown state
+  const [dropdownResults, setDropdownResults] = useState<{ name: string; slug: string; logo_url: string | null; coupon_count: number }[]>([])
+  const [dropdownOpen, setDropdownOpen]       = useState(false)
+  const [dropdownActive, setDropdownActive]   = useState(-1)
+  const searchWrapRef                         = useRef<HTMLDivElement>(null)
+  const searchTimerRef                        = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Awin search state (for new stores)
   const [awinQuery, setAwinQuery]       = useState('')
@@ -100,6 +107,54 @@ export function StoresAdmin({ initialStores }: Props) {
   function closePanel() { setPanelOpen(false); setEditing(EMPTY); setSaveError(null); setAwinQuery(''); setAwinConfirmed(null); setAwinResults([]) }
 
   function handleSearch(q: string) { setSearch(q); setPage(0) }
+
+  const fetchDropdown = useCallback((q: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    if (q.length < 1) { setDropdownResults([]); setDropdownOpen(false); return }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/store-search?q=${encodeURIComponent(q)}`)
+        const data = await res.json()
+        setDropdownResults(data)
+        setDropdownOpen(data.length > 0)
+        setDropdownActive(-1)
+      } catch { /* ignore */ }
+    }, 180)
+  }, [])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  function handleSearchInput(q: string) {
+    handleSearch(q)
+    fetchDropdown(q)
+  }
+
+  function pickDropdownStore(slug: string) {
+    // Find the store in the local list and open its edit panel
+    const found = stores.find(s => s.slug === slug)
+    setDropdownOpen(false)
+    if (found) openEdit(found)
+  }
+
+  function handleSearchKey(e: React.KeyboardEvent) {
+    if (!dropdownOpen) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setDropdownActive(a => Math.min(a + 1, dropdownResults.length - 1)) }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setDropdownActive(a => Math.max(a - 1, -1)) }
+    if (e.key === 'Escape')    { setDropdownOpen(false); setDropdownActive(-1) }
+    if (e.key === 'Enter' && dropdownActive >= 0 && dropdownResults[dropdownActive]) {
+      e.preventDefault()
+      pickDropdownStore(dropdownResults[dropdownActive].slug)
+    }
+  }
 
   async function handleSave() {
     if (!editing.name || !editing.slug) return
@@ -196,15 +251,44 @@ export function StoresAdmin({ initialStores }: Props) {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+      {/* Search with dropdown */}
+      <div ref={searchWrapRef} className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
         <input
           value={search}
-          onChange={e => handleSearch(e.target.value)}
+          onChange={e => handleSearchInput(e.target.value)}
+          onKeyDown={handleSearchKey}
+          onFocus={() => search && dropdownResults.length && setDropdownOpen(true)}
           placeholder={tr.search}
+          autoComplete="off"
           className="w-full border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
         />
+        {/* Dropdown */}
+        {dropdownOpen && dropdownResults.length > 0 && (
+          <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
+            {dropdownResults.map((s, i) => (
+              <button
+                key={s.slug}
+                onMouseDown={e => { e.preventDefault(); pickDropdownStore(s.slug) }}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${i === dropdownActive ? 'bg-primary/10' : 'hover:bg-gray-50'}`}
+              >
+                {s.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.logo_url} alt="" className="w-7 h-7 object-contain rounded border border-gray-100 p-0.5 shrink-0 bg-white" />
+                ) : (
+                  <span className="w-7 h-7 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                    {s.name[0].toUpperCase()}
+                  </span>
+                )}
+                <span className="flex-1 font-medium text-gray-800 truncate">{s.name}</span>
+                <span className="text-xs text-gray-400 shrink-0">{s.coupon_count} codes</span>
+              </button>
+            ))}
+            <div className="border-t border-gray-100 px-3 py-1.5">
+              <span className="text-xs text-gray-400">↵ ouvre les détails · Échap ferme</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Count */}
