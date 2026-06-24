@@ -45,6 +45,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/** Build the store-level affiliate tracking URL from whatever network data is available */
+function resolveStoreAffiliateUrl(store: Store, siteUrl: string): string {
+  if (store.affiliate_url) return store.affiliate_url
+  // Generate Awin tracking link when merchant ID is known
+  if (store.awin_merchant_id) {
+    const pubId = process.env.AWIN_PUBLISHER_ID ?? '857351'
+    return `https://www.awin1.com/cread.php?awinmid=${store.awin_merchant_id}&awinaffid=${pubId}`
+  }
+  // Last resort: store page on our own site
+  return `${siteUrl}/store/${store.slug}/`
+}
+
 export default async function StorePage({ params }: Props) {
   const { slug }  = await params
   const supabase  = await createClient()
@@ -168,7 +180,7 @@ export default async function StorePage({ params }: Props) {
       {faqJsonLd && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       )}
-      <StorePageClient store={store} coupons={coupons} similarCoupons={similarCoupons} sidebarBanners={sidebarBanners} />
+      <StorePageClient store={store} coupons={coupons} similarCoupons={similarCoupons} sidebarBanners={sidebarBanners} storeAffiliateUrl={resolveStoreAffiliateUrl(store as Store, siteUrl)} />
     </>
   )
 }

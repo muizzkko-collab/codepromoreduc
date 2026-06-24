@@ -17,6 +17,7 @@ interface Props {
   coupons: Coupon[]
   similarCoupons: SimilarCoupon[]
   sidebarBanners: SidebarBanner[]
+  storeAffiliateUrl: string
 }
 
 type Filter = 'ALL' | 'CODES' | 'DEALS'
@@ -124,7 +125,12 @@ function StoreLogo({ store, size }: { store: Store; size: number }) {
   )
 }
 
-export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners }: Props) {
+/** Priority: coupon deep-link > store affiliate URL (already resolved server-side) */
+function couponUrl(coupon: { destination_url?: string | null }, storeAffiliateUrl: string): string {
+  return coupon.destination_url || storeAffiliateUrl
+}
+
+export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners, storeAffiliateUrl }: Props) {
   const [filter, setFilter] = useState<Filter>('ALL')
   const [openDetails, setOpenDetails] = useState<Record<string, boolean>>({})
   const [openFaqs, setOpenFaqs] = useState<Record<number, boolean>>({})
@@ -324,7 +330,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners
                             storeName={store.name}
                             storeSlug={store.slug}
                             popupBannerUrl={store.popup_banner_url ?? null}
-                            affiliateUrl={(coupon as unknown as { destination_url?: string }).destination_url || store.affiliate_url || `https://codepromoreduc.fr/store/${store.slug}/`}
+                            affiliateUrl={couponUrl(coupon as { destination_url?: string | null }, storeAffiliateUrl)}
                             expiryDate={coupon.expiry_date ?? null}
                             featured={isTop}
                             variant="storepage"
@@ -449,7 +455,9 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners
                   <div className="similar-store-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
                     {similarCoupons.slice(0,8).map(c => {
                       const sStore = c.store
-                      const affUrl = sStore?.affiliate_url ?? `https://codepromoreduc.fr/store/${sStore?.slug}/`
+                      const affUrl = (c as unknown as { destination_url?: string | null }).destination_url
+                        || sStore?.affiliate_url
+                        || `https://codepromoreduc.fr/store/${sStore?.slug}/`
                       const hasCode = !!c.code
                       return (
                         <div
