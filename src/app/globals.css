@@ -97,6 +97,18 @@
   width: 88px; height: 88px; border-radius: 16px;
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; flex-shrink: 0; text-align: center;
+  transition: box-shadow 300ms cubic-bezier(.4,0,.2,1), border-color 300ms cubic-bezier(.4,0,.2,1), transform 300ms cubic-bezier(.4,0,.2,1);
+}
+/* Badge glow on card hover */
+.cpr-card-hover:hover .coupon-badge {
+  border-color: rgba(56,189,248,.55) !important;
+  box-shadow: 0 0 0 3px rgba(56,189,248,.12), 0 0 20px rgba(56,189,248,.25), inset 0 1px 0 rgba(255,255,255,.15);
+  transform: scale(1.05);
+}
+.cpr-featured:hover .coupon-badge {
+  border-color: rgba(245,158,11,.65) !important;
+  box-shadow: 0 0 0 3px rgba(245,158,11,.15), 0 0 22px rgba(245,158,11,.35), inset 0 1px 0 rgba(255,255,255,.15);
+  transform: scale(1.05);
 }
 .coupon-right {
   display: flex; flex-direction: column;
