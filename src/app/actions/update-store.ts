@@ -331,6 +331,19 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
   return { store_name: storeName, method: 'scraper', added, updated, deactivated: 0, message: detail || '0 coupons found' }
 }
 
+/** Recount active coupons and write the accurate total back to the stores table */
+async function refreshCouponCount(storeId: string): Promise<void> {
+  const supabase = createAdminClient()
+  const { count } = await supabase
+    .from('coupons')
+    .select('*', { count: 'exact', head: true })
+    .eq('store_id', storeId)
+    .eq('is_active', true)
+  if (count !== null) {
+    await supabase.from('stores').update({ coupon_count: count }).eq('id', storeId)
+  }
+}
+
 // ── Main exported action ──────────────────────────────────────────────────────
 
 export async function updateStore(storeId: string): Promise<{ data: UpdateResult | null; error: string | null }> {
@@ -347,24 +360,24 @@ export async function updateStore(storeId: string): Promise<{ data: UpdateResult
   const hasNetwork = store.awin_merchant_id || (store.network_merchant_ids && Object.keys(store.network_merchant_ids).length > 0)
 
   try {
+    let result: UpdateResult
+
     if (hasNetwork) {
       const networkResult = await syncFromNetwork(store.id, store.name, store.awin_merchant_id, store.network_merchant_ids)
-      // If the network returned nothing, fall back to the Firecrawl scraper
       if (networkResult.added === 0 && networkResult.updated === 0) {
         const scraperResult = await syncFromScraper(store.id, store.name, store.slug)
-        return {
-          data: {
-            ...scraperResult,
-            message: `Network had no new offers → scraper: ${scraperResult.message}`,
-          },
-          error: null,
-        }
+        result = { ...scraperResult, message: `Network had no new offers → scraper: ${scraperResult.message}` }
+      } else {
+        result = networkResult
       }
-      return { data: networkResult, error: null }
     } else {
-      const result = await syncFromScraper(store.id, store.name, store.slug)
-      return { data: result, error: null }
+      result = await syncFromScraper(store.id, store.name, store.slug)
     }
+
+    // Always sync the coupon_count column so it's accurate on next page load
+    await refreshCouponCount(store.id)
+
+    return { data: result, error: null }
   } catch (e: unknown) {
     return { data: null, error: (e as Error).message }
   }

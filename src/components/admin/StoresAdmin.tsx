@@ -219,10 +219,17 @@ export function StoresAdmin({ initialStores }: Props) {
         setUpdateToast({ msg: `Error: ${error}`, ok: false })
       } else if (data) {
         setUpdateToast({ msg: `${store.name}: ${data.message} (via ${data.method})`, ok: true })
-        // Update local coupon count
-        if (data.added > 0) {
-          setStores(prev => prev.map(s => s.id === store.id ? { ...s, coupon_count: s.coupon_count + data.added } : s))
-        }
+        // Refetch the real coupon_count from DB for this store
+        fetch(`/api/store-search?q=${encodeURIComponent(store.name)}`)
+          .then(r => r.json())
+          .then((results: { slug: string; coupon_count: number }[]) => {
+            const match = results.find(r => r.slug === store.slug)
+            if (match) setStores(prev => prev.map(s => s.id === store.id ? { ...s, coupon_count: match.coupon_count } : s))
+          })
+          .catch(() => {
+            // Fallback: increment optimistically
+            if (data.added > 0) setStores(prev => prev.map(s => s.id === store.id ? { ...s, coupon_count: s.coupon_count + data.added } : s))
+          })
       }
     } catch (e: unknown) {
       setUpdateToast({ msg: `Error: ${(e as Error).message}`, ok: false })

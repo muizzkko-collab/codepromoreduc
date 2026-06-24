@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo, useTransition } from 'react'
+import { useState, useMemo, useTransition, useRef, useEffect } from 'react'
 import { useLang } from './LangContext'
 import { Plus, Pencil, Trash2, X, Search } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -34,6 +34,25 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
   const [saveError, setSaveError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [storeSearch, setStoreSearch] = useState('')
+
+  // Store filter dropdown
+  const [storeFilterInput, setStoreFilterInput]   = useState('')
+  const [storeFilterOpen, setStoreFilterOpen]     = useState(false)
+  const [selectedStoreName, setSelectedStoreName] = useState('')
+  const storeFilterRef                            = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (storeFilterRef.current && !storeFilterRef.current.contains(e.target as Node)) setStoreFilterOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const storeFilterOptions = useMemo(() =>
+    stores.filter(s => s.name.toLowerCase().includes(storeFilterInput.toLowerCase())).slice(0, 12),
+    [stores, storeFilterInput]
+  )
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -148,11 +167,38 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr.search}
             className="w-full border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
         </div>
-        <select value={filterStore} onChange={e => setFilterStore(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
-          <option value="">{tr.allStatus} ({tr.store})</option>
-          {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        {/* Searchable store filter */}
+        <div ref={storeFilterRef} className="relative min-w-[200px]">
+          <input
+            value={storeFilterInput}
+            onChange={e => { setStoreFilterInput(e.target.value); setStoreFilterOpen(true) }}
+            onFocus={() => setStoreFilterOpen(true)}
+            placeholder={selectedStoreName || `Filtrer par boutique…`}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+            autoComplete="off"
+          />
+          {filterStore && (
+            <button
+              onClick={() => { setFilterStore(''); setSelectedStoreName(''); setStoreFilterInput('') }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+            >✕</button>
+          )}
+          {storeFilterOpen && storeFilterOptions.length > 0 && (
+            <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50 max-h-64 overflow-y-auto">
+              <button
+                onMouseDown={e => { e.preventDefault(); setFilterStore(''); setSelectedStoreName(''); setStoreFilterInput(''); setStoreFilterOpen(false) }}
+                className="w-full px-3 py-2 text-left text-sm text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+              >Toutes les boutiques</button>
+              {storeFilterOptions.map(s => (
+                <button
+                  key={s.id}
+                  onMouseDown={e => { e.preventDefault(); setFilterStore(s.id); setSelectedStoreName(s.name); setStoreFilterInput(''); setStoreFilterOpen(false) }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${filterStore === s.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-gray-700'}`}
+                >{s.name}</button>
+              ))}
+            </div>
+          )}
+        </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
           <option value="all">{tr.allStatus}</option>
