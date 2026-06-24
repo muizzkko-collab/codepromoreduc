@@ -4,8 +4,9 @@ import { useLang } from './LangContext'
 import { formatDate } from '@/lib/utils'
 import {
   RefreshCw, Clock,
-  Zap, Globe, TrendingUp, TrendingDown,
+  Zap, Globe, TrendingUp, TrendingDown, ImageIcon,
 } from 'lucide-react'
+import { syncStoreLogos } from '@/app/actions/sync-logos'
 
 interface SyncLog {
   id: string; created_at: string; status: string | null; sync_type: string | null
@@ -56,12 +57,31 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
   const [message, setMessage]               = useState<string | null>(null)
   const [lastResults, setLastResults]       = useState<NetworkSyncResult[] | null>(null)
   const [activeTab, setActiveTab]           = useState<'overview' | 'stores' | 'logs'>('overview')
+  const [logoSyncing, setLogoSyncing]       = useState(false)
+  const [logoMessage, setLogoMessage]       = useState<string | null>(null)
 
   const last        = syncLogs.find(l => l.sync_type === 'awin') ?? syncLogs[0]
   const lastScrape  = syncLogs.find(l => l.sync_type === 'scraper')
   const added24h    = syncLogs.filter(inLast24h).reduce((s, l) => s + (l.coupons_added ?? 0), 0)
   const failedStores  = storeLogs.filter(l => l.status === 'error')
   const successStores = storeLogs.filter(l => l.status === 'success')
+
+  async function doLogoSync() {
+    setLogoSyncing(true)
+    setLogoMessage(null)
+    try {
+      const { data, error } = await syncStoreLogos()
+      if (error) {
+        setLogoMessage(`Erreur : ${error}`)
+      } else if (data) {
+        setLogoMessage(`✓ Logos : ${data.updated} mis à jour, ${data.skipped} inchangés${data.errors ? `, ${data.errors} erreurs` : ''}`)
+      }
+    } catch (e: unknown) {
+      setLogoMessage(`Erreur : ${(e as Error).message}`)
+    } finally {
+      setLogoSyncing(false)
+    }
+  }
 
   async function doSync(network?: Network) {
     const qs = network ? `?network=${network}` : ''
@@ -90,21 +110,38 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-2xl font-bold text-navy">{tr.automation}</h1>
-        <button
-          onClick={() => doSync()}
-          disabled={syncing || !!networkSyncing}
-          className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
-        >
-          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? tr.syncing : tr.syncNow}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={doLogoSync}
+            disabled={logoSyncing || syncing || !!networkSyncing}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm"
+            title="Sync store logos from all affiliate networks"
+          >
+            <ImageIcon className={`h-4 w-4 ${logoSyncing ? 'animate-pulse' : ''}`} />
+            {logoSyncing ? 'Syncing logos…' : 'Sync Logos'}
+          </button>
+          <button
+            onClick={() => doSync()}
+            disabled={syncing || !!networkSyncing}
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
+          >
+            <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? tr.syncing : tr.syncNow}
+          </button>
+        </div>
       </div>
 
       {message && (
         <p className={`text-sm px-4 py-2.5 rounded-lg font-medium ${message.startsWith('Erreur') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
           {message}
+        </p>
+      )}
+
+      {logoMessage && (
+        <p className={`text-sm px-4 py-2.5 rounded-lg font-medium ${logoMessage.startsWith('Erreur') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+          {logoMessage}
         </p>
       )}
 
@@ -149,19 +186,13 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
                   <p className="text-xs text-gray-400">{tr.neverSynced}</p>
                 )}
 
-                {key === 'kwanko' ? (
-                  <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                    {tr.apiNotConfigured}
-                  </p>
-                ) : (
-                  <button
-                    onClick={() => doSync(key)}
-                    disabled={isSyncing}
-                    className="w-full text-xs py-1.5 rounded-lg border border-gray-200 hover:border-primary hover:text-primary disabled:opacity-40 transition-colors font-medium"
-                  >
-                    {isSyncing ? '…' : `Sync ${label}`}
-                  </button>
-                )}
+                <button
+                  onClick={() => doSync(key)}
+                  disabled={isSyncing}
+                  className="w-full text-xs py-1.5 rounded-lg border border-gray-200 hover:border-primary hover:text-primary disabled:opacity-40 transition-colors font-medium"
+                >
+                  {isSyncing ? '…' : `Sync ${label}`}
+                </button>
               </div>
             )
           })}
