@@ -184,7 +184,7 @@ export function StoresAdmin({ initialStores }: Props) {
 
       {/* Count */}
       <p className="text-xs text-gray-400 mb-2">
-        {filtered.length} boutiques {search && `pour "${search}"`} — page {page + 1}/{Math.max(totalPages, 1)}
+        {filtered.length} {tr.storesFound} {search && `"${search}"`} — {tr.storesPage} {page + 1}/{Math.max(totalPages, 1)}
       </p>
 
       {/* Table */}
@@ -221,7 +221,7 @@ export function StoresAdmin({ initialStores }: Props) {
                     <button
                       onClick={() => openEdit(s)}
                       className="p-1.5 text-gray-400 hover:text-navy rounded hover:bg-gray-100"
-                      title="Modifier"
+                      title={tr.edit}
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -229,7 +229,7 @@ export function StoresAdmin({ initialStores }: Props) {
                       onClick={() => handleDelete(s.id)}
                       disabled={isPending}
                       className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-gray-100"
-                      title="Supprimer"
+                      title={tr.delete}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -271,7 +271,7 @@ export function StoresAdmin({ initialStores }: Props) {
           <div className="flex-1 bg-black/40" onClick={closePanel} />
           <div className="w-full max-w-md bg-white shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-navy">{editing.id ? 'Modifier' : 'Ajouter'} une boutique</h2>
+              <h2 className="font-semibold text-navy">{editing.id ? tr.editStore : tr.addStore}</h2>
               <button onClick={closePanel} className="p-1 rounded hover:bg-gray-100">
                 <X className="h-5 w-5 text-gray-400" />
               </button>
@@ -289,7 +289,7 @@ export function StoresAdmin({ initialStores }: Props) {
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 space-y-3">
                   <div className="flex items-center gap-2 text-blue-700 text-xs font-semibold uppercase tracking-wide">
                     <Link className="h-3.5 w-3.5" />
-                    Lier à un annonceur Awin (optionnel)
+                    {tr.linkAwin}
                   </div>
 
                   {awinConfirmed ? (
@@ -301,14 +301,14 @@ export function StoresAdmin({ initialStores }: Props) {
                         <p className="text-sm font-semibold text-green-700">{awinConfirmed.name}</p>
                         <p className="text-xs text-gray-400">ID Awin: {awinConfirmed.awin_id}</p>
                       </div>
-                      <button onClick={clearAwin} className="text-gray-400 hover:text-red-500 text-xs">Retirer</button>
+                      <button onClick={clearAwin} className="text-gray-400 hover:text-red-500 text-xs">{tr.remove}</button>
                     </div>
                   ) : (
                     <div className="relative">
                       <input
                         value={awinQuery}
                         onChange={e => setAwinQuery(e.target.value)}
-                        placeholder="Rechercher un annonceur Awin…"
+                        placeholder={tr.searchAwin}
                         className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-300"
                       />
                       {awinLoading && (
@@ -336,14 +336,12 @@ export function StoresAdmin({ initialStores }: Props) {
                       )}
                     </div>
                   )}
-                  <p className="text-xs text-blue-500">
-                    Lier un annonceur Awin permettra la synchronisation automatique des coupons chaque nuit.
-                  </p>
+                  <p className="text-xs text-blue-500">{tr.linkAwinDesc}</p>
                 </div>
               ) : editing.awin_merchant_id ? (
                 <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-sm">
                   <Link className="h-4 w-4 text-green-600" />
-                  <span className="text-green-700 font-medium">Lié à Awin</span>
+                  <span className="text-green-700 font-medium">{tr.linkedToAwin}</span>
                   <span className="text-gray-400 text-xs">(ID {editing.awin_merchant_id})</span>
                 </div>
               ) : null}
@@ -377,7 +375,7 @@ export function StoresAdmin({ initialStores }: Props) {
                     onClick={() => fileRef.current?.click()}
                     className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50"
                   >
-                    {logoFile ? logoFile.name : 'Choisir un fichier'}
+                    {logoFile ? logoFile.name : tr.chooseFile}
                   </button>
                   <input
                     ref={fileRef}
@@ -410,17 +408,17 @@ export function StoresAdmin({ initialStores }: Props) {
                   className="input-base resize-none"
                 />
               </Field>
-              <Field label="Bannière popup (URL image)">
+              <Field label={tr.bannerUrl}>
                 <input
                   value={editing.popup_banner_url ?? ''}
                   onChange={e => setEditing(p => ({ ...p, popup_banner_url: e.target.value }))}
                   className="input-base"
-                  placeholder="https://exemple.com/banniere.jpg"
+                  placeholder={tr.bannerPlaceholder}
                 />
                 {editing.popup_banner_url && (
                   <img
                     src={editing.popup_banner_url}
-                    alt="Aperçu bannière"
+                    alt={tr.bannerPreview}
                     className="mt-2 rounded-lg w-full object-cover"
                     style={{ maxHeight: 80 }}
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
@@ -458,7 +456,7 @@ export function StoresAdmin({ initialStores }: Props) {
                 disabled={saving || !editing.name || !editing.slug}
                 className="flex-1 bg-primary text-white rounded-lg py-2 text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
-                {saving ? 'Enregistrement…' : tr.save}
+                {saving ? tr.saving : tr.save}
               </button>
             </div>
           </div>

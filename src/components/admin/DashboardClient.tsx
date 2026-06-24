@@ -106,7 +106,7 @@ export function DashboardClient({ stats, topStores, dailyClicks, recentFlags }: 
         <div style={{ ...glass, padding:'22px 24px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
             <h2 style={{ fontSize:14, fontWeight:800, color:'#fff', margin:0, letterSpacing:'-.01em' }}>{tr.dailyClicks}</h2>
-            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.3)', textTransform:'uppercase', letterSpacing:'.15em' }}>30 derniers jours</span>
+            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,.3)', textTransform:'uppercase', letterSpacing:'.15em' }}>{tr.last30Days}</span>
           </div>
           <BarChart data={dailyClicks} />
           <div style={{ display:'flex', justifyContent:'space-between', marginTop:8 }}>
@@ -119,7 +119,7 @@ export function DashboardClient({ stats, topStores, dailyClicks, recentFlags }: 
         <div style={{ ...glass, padding:'22px 22px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
             <h2 style={{ fontSize:14, fontWeight:800, color:'#fff', margin:0 }}>{tr.flaggedCoupons}</h2>
-            <Link href="/admin/signalements/" style={{ fontSize:11, color:'#38bdf8', textDecoration:'none', fontWeight:600 }}>Voir tout →</Link>
+            <Link href="/admin/signalements/" style={{ fontSize:11, color:'#38bdf8', textDecoration:'none', fontWeight:600 }}>{tr.seeAll}</Link>
           </div>
           {recentFlags.length === 0 ? (
             <p style={{ fontSize:12, color:'rgba(255,255,255,.3)', margin:0 }}>{tr.noData}</p>

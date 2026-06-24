@@ -98,7 +98,7 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
           className="flex items-center gap-2 bg-primary text-white px-5 py-2 rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
         >
           <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Sync en cours…' : 'Sync tous les réseaux'}
+          {syncing ? tr.syncing : tr.syncNow}
         </button>
       </div>
 
@@ -110,15 +110,15 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Zap}         label="Boutiques Awin"      value={String(stats.awinStores)}    color="bg-blue-100 text-blue-600" />
-        <StatCard icon={Globe}       label="Boutiques scraper"   value={String(stats.scraperStores)} color="bg-purple-100 text-purple-600" />
-        <StatCard icon={TrendingUp}  label="Ajoutés aujourd'hui" value={`+${stats.addedToday}`}      color="bg-green-100 text-green-600" />
-        <StatCard icon={TrendingDown} label="Expirés aujourd'hui" value={String(stats.expiredToday)} color="bg-orange-100 text-orange-600" />
+        <StatCard icon={Zap}         label={tr.awinStores}    value={String(stats.awinStores)}    color="bg-blue-100 text-blue-600" />
+        <StatCard icon={Globe}       label={tr.scraperStores} value={String(stats.scraperStores)} color="bg-purple-100 text-purple-600" />
+        <StatCard icon={TrendingUp}  label={tr.addedToday}   value={`+${stats.addedToday}`}      color="bg-green-100 text-green-600" />
+        <StatCard icon={TrendingDown} label={tr.expiredToday} value={String(stats.expiredToday)} color="bg-orange-100 text-orange-600" />
       </div>
 
       {/* Per-network status cards */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Réseaux affiliés</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">{tr.affiliateNetworks}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {NETWORKS.map(({ key, label, color }) => {
             const lastLog  = syncLogs.find(l => l.sync_type === key || l.sync_type?.includes(key))
@@ -134,10 +134,10 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
 
                 {liveResult ? (
                   <div className="text-xs space-y-0.5">
-                    <p className="text-green-600 font-medium">+{liveResult.added} ajoutés</p>
-                    <p className="text-blue-500">{liveResult.updated} mis à jour</p>
-                    <p className="text-orange-500">-{liveResult.deactivated} désactivés</p>
-                    <p className="text-gray-400">{liveResult.stores} boutiques · {liveResult.duration_s}s</p>
+                    <p className="text-green-600 font-medium">+{liveResult.added} {tr.added}</p>
+                    <p className="text-blue-500">{liveResult.updated} updated</p>
+                    <p className="text-orange-500">-{liveResult.deactivated} {tr.removed}</p>
+                    <p className="text-gray-400">{liveResult.stores} {tr.stores} · {liveResult.duration_s}s</p>
                     {liveResult.error && <p className="text-red-500 truncate">{liveResult.error}</p>}
                   </div>
                 ) : lastLog ? (
@@ -146,12 +146,12 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
                     <p>+{lastLog.coupons_added ?? 0} · -{lastLog.coupons_removed ?? 0}</p>
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400">Jamais synchronisé</p>
+                  <p className="text-xs text-gray-400">{tr.neverSynced}</p>
                 )}
 
                 {key === 'kwanko' ? (
                   <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                    Endpoint API non configuré
+                    {tr.apiNotConfigured}
                   </p>
                 ) : (
                   <button
@@ -171,22 +171,22 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
       {/* Last sync overview cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SyncCard
-          title="Dernière sync Awin"
+          title={tr.lastAwinSync}
           icon={Clock}
           status={last?.status}
-          time={last ? formatDate(last.created_at) : 'Jamais'}
-          detail={last ? `${last.coupons_added ?? 0} ajoutés · ${last.coupons_removed ?? 0} désactivés · ${last.stores_synced ?? 0} boutiques` : '—'}
+          time={last ? formatDate(last.created_at) : tr.never}
+          detail={last ? `${last.coupons_added ?? 0} ${tr.added} · ${last.coupons_removed ?? 0} ${tr.removed} · ${last.stores_synced ?? 0} ${tr.stores}` : '—'}
           duration={last?.duration_ms}
-          schedule="Tous les jours à 3h (Paris)"
+          schedule={tr.awinSchedule}
         />
         <SyncCard
-          title="Dernier scraping"
+          title={tr.lastScraping}
           icon={Globe}
           status={lastScrape?.status}
-          time={lastScrape ? formatDate(lastScrape.created_at) : 'Jamais'}
-          detail={lastScrape ? `${lastScrape.coupons_added ?? 0} ajoutés · ${lastScrape.stores_synced ?? 0} boutiques` : '—'}
+          time={lastScrape ? formatDate(lastScrape.created_at) : tr.never}
+          detail={lastScrape ? `${lastScrape.coupons_added ?? 0} ${tr.added} · ${lastScrape.stores_synced ?? 0} ${tr.stores}` : '—'}
           duration={lastScrape?.duration_ms}
-          schedule="Chaque dimanche à 4h"
+          schedule={tr.scraperSchedule}
         />
       </div>
 
@@ -203,7 +203,7 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab === 'overview' ? "Vue d'ensemble" : tab === 'stores' ? `Boutiques (${storeLogs.length})` : 'Historique'}
+              {tab === 'overview' ? tr.overview : tab === 'stores' ? tr.storeLog.replace('{n}', String(storeLogs.length)) : tr.history}
             </button>
           ))}
         </div>
@@ -212,15 +212,15 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
           <div className="p-5 grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-2xl font-bold text-green-600">{successStores.length}</p>
-              <p className="text-xs text-gray-500 mt-1">Boutiques synchronisées</p>
+              <p className="text-xs text-gray-500 mt-1">{tr.syncedStores}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-red-500">{failedStores.length}</p>
-              <p className="text-xs text-gray-500 mt-1">Boutiques échouées</p>
+              <p className="text-xs text-gray-500 mt-1">{tr.failedStores}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-navy">{added24h}</p>
-              <p className="text-xs text-gray-500 mt-1">Codes ajoutés (24h)</p>
+              <p className="text-xs text-gray-500 mt-1">{tr.codesAdded24h}</p>
             </div>
           </div>
         )}
@@ -228,17 +228,17 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
         {activeTab === 'stores' && (
           <div className="overflow-x-auto">
             {storeLogs.length === 0 ? (
-              <p className="text-center text-gray-400 py-10 text-sm">Aucun résultat par boutique disponible. Lancez une sync.</p>
+              <p className="text-center text-gray-400 py-10 text-sm">{tr.noStoreResults}</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
-                    <th className="px-5 py-3 text-left">Boutique</th>
-                    <th className="px-5 py-3 text-left">Statut</th>
-                    <th className="px-5 py-3 text-right">Ajoutés</th>
-                    <th className="px-5 py-3 text-right">Mis à jour</th>
-                    <th className="px-5 py-3 text-right">Désactivés</th>
-                    <th className="px-5 py-3 text-left hidden lg:table-cell">Erreur</th>
+                    <th className="px-5 py-3 text-left">{tr.store}</th>
+                    <th className="px-5 py-3 text-left">{tr.active}</th>
+                    <th className="px-5 py-3 text-right">{tr.added}</th>
+                    <th className="px-5 py-3 text-right">Updated</th>
+                    <th className="px-5 py-3 text-right">{tr.removed}</th>
+                    <th className="px-5 py-3 text-left hidden lg:table-cell">{tr.errors}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -263,18 +263,18 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
         {activeTab === 'logs' && (
           <div className="overflow-x-auto">
             {syncLogs.length === 0 ? (
-              <p className="text-center text-gray-400 py-10 text-sm">Aucun historique.</p>
+              <p className="text-center text-gray-400 py-10 text-sm">{tr.noHistory}</p>
             ) : (
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
                   <tr>
                     <th className="px-5 py-3 text-left">Date</th>
                     <th className="px-5 py-3 text-left">Type</th>
-                    <th className="px-5 py-3 text-left">Statut</th>
-                    <th className="px-5 py-3 text-right">Ajoutés</th>
-                    <th className="px-5 py-3 text-right">Désactivés</th>
-                    <th className="px-5 py-3 text-right hidden lg:table-cell">Boutiques</th>
-                    <th className="px-5 py-3 text-right hidden lg:table-cell">Durée</th>
+                    <th className="px-5 py-3 text-left">{tr.active}</th>
+                    <th className="px-5 py-3 text-right">{tr.added}</th>
+                    <th className="px-5 py-3 text-right">{tr.removed}</th>
+                    <th className="px-5 py-3 text-right hidden lg:table-cell">{tr.stores}</th>
+                    <th className="px-5 py-3 text-right hidden lg:table-cell">Duration</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

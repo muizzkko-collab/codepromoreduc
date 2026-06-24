@@ -41,7 +41,7 @@ export function CategoriesAdmin({ initialCategories }: { initialCategories: Cate
 
   async function handleDelete(cat: Category) {
     if (cat.store_count > 0) {
-      alert(`Impossible : ${cat.store_count} boutique(s) utilisent cette catégorie.`)
+      alert(tr.cannotDeleteCategory.replace('{n}', String(cat.store_count)))
       return
     }
     if (!confirm(tr.deleteConfirm)) return
@@ -69,7 +69,7 @@ export function CategoriesAdmin({ initialCategories }: { initialCategories: Cate
         <div className="flex gap-2 mb-4">
           <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false) }}
-            placeholder="Nom de la catégorie" className="input-base flex-1" />
+            placeholder={tr.categoryNamePlaceholder} className="input-base flex-1" />
           <button onClick={handleAdd} disabled={saving} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
             <Check className="h-4 w-4" />
           </button>

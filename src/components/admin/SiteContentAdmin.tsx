@@ -132,7 +132,7 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer cette bannière ?')) return
+    if (!confirm(tr.deleteBannerConfirm)) return
     const { error } = await deleteSidebarBanner(id)
     if (error) { alert(error); return }
     setBanners(prev => prev.filter(b => b.id !== id))
@@ -145,14 +145,14 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-500">{banners.length}/{MAX_BANNERS} bannières · rotation automatique toutes les 7 secondes</p>
+          <p className="text-sm text-gray-500">{tr.bannerCount.replace('{n}', String(banners.length)).replace('{max}', String(MAX_BANNERS))}</p>
         </div>
         <button
           onClick={openNew}
           disabled={banners.length >= MAX_BANNERS}
           className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Plus className="h-4 w-4" /> Ajouter une bannière
+          <Plus className="h-4 w-4" /> {tr.addBanner}
         </button>
       </div>
 
@@ -160,8 +160,8 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {banners.length === 0 ? (
           <div className="text-center py-12 text-gray-400 text-sm">
-            <p className="mb-3">Aucune bannière configurée.</p>
-            <p>Le widget affichera une bannière par défaut sur les pages boutique.</p>
+            <p className="mb-3">{tr.noBanners}</p>
+            <p>{tr.noBannersDesc}</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -174,7 +174,7 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-xs font-bold text-teal-600 uppercase tracking-wide">{b.label}</span>
-                    {!b.is_active && <span className="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">inactif</span>}
+                    {!b.is_active && <span className="text-xs text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">{tr.inactive2}</span>}
                   </div>
                   <p className="font-semibold text-navy text-sm truncate">{b.title}</p>
                   {b.description && <p className="text-xs text-gray-400 truncate mt-0.5">{b.description}</p>}
@@ -201,7 +201,7 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
         )}
       </div>
 
-      <p className="text-xs text-gray-400">Les bannières actives s'affichent dans l'ordre ci-dessus. Le carrousel tourne automatiquement.</p>
+      <p className="text-xs text-gray-400">{tr.bannerNote}</p>
 
       {/* Slide panel */}
       {panelOpen && (
@@ -209,7 +209,7 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
           <div className="flex-1 bg-black/40" onClick={closePanel} />
           <div className="w-full max-w-2xl bg-white shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-navy">{editing.id ? 'Modifier la bannière' : 'Nouvelle bannière'}</h2>
+              <h2 className="font-semibold text-navy">{editing.id ? tr.editBanner : tr.newBanner}</h2>
               <button onClick={closePanel}><X className="h-5 w-5 text-gray-400" /></button>
             </div>
 
@@ -219,13 +219,13 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                 <div className="p-6 space-y-4 border-r border-gray-100">
                   {errorMsg && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{errorMsg}</div>}
 
-                  <Field label="Image de la marque">
+                  <Field label={tr.brandImage}>
                     {/* File upload */}
                     <div className="flex items-center gap-2 mb-2">
                       <button type="button" onClick={() => fileRef.current?.click()} className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 shrink-0">
-                        📁 {imageFile ? imageFile.name : 'Choisir un fichier'}
+                        📁 {imageFile ? imageFile.name : tr.chooseFile}
                       </button>
-                      {imageFile && <button type="button" onClick={() => setImageFile(null)} className="text-xs text-gray-400 hover:text-red-500">✕ retirer</button>}
+                      {imageFile && <button type="button" onClick={() => setImageFile(null)} className="text-xs text-gray-400 hover:text-red-500">✕ {tr.remove}</button>}
                       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => { setImageFile(e.target.files?.[0] ?? null); e.target.value = '' }} />
                     </div>
                     {/* Or paste URL */}
@@ -233,9 +233,9 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                       value={editing.image_url ?? ''}
                       onChange={e => setEditing(p => ({ ...p, image_url: e.target.value }))}
                       className="input-base"
-                      placeholder="— ou coller une URL d'image —"
+                      placeholder={tr.orPasteUrl}
                     />
-                    <p className="text-xs text-gray-400 mt-1">Ratio 16/9 recommandé. Laissez vide pour un style texte.</p>
+                    <p className="text-xs text-gray-400 mt-1">{tr.imageRatio}</p>
                     {/* Preview */}
                     {(imageFile || editing.image_url) && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -248,23 +248,23 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                       />
                     )}
                   </Field>
-                  <Field label="Badge (ex: Offre exclusive, Partenaire) *">
-                    <input value={editing.label} onChange={e => setEditing(p => ({ ...p, label: e.target.value }))} className="input-base" placeholder="Offre exclusive" />
+                  <Field label={tr.badgeLabel}>
+                    <input value={editing.label} onChange={e => setEditing(p => ({ ...p, label: e.target.value }))} className="input-base" placeholder="Exclusive offer" />
                   </Field>
-                  <Field label="Titre affiché sous l'image *">
-                    <input value={editing.title} onChange={e => setEditing(p => ({ ...p, title: e.target.value }))} className="input-base" placeholder="Ex: Économisez 20% chez Nike" />
+                  <Field label={tr.bannerTitle}>
+                    <input value={editing.title} onChange={e => setEditing(p => ({ ...p, title: e.target.value }))} className="input-base" placeholder={tr.bannerTitlePlaceholder} />
                   </Field>
-                  <Field label="Description (optionnelle — affichée si pas d'image)">
-                    <textarea value={editing.description ?? ''} onChange={e => setEditing(p => ({ ...p, description: e.target.value }))} rows={2} className="input-base resize-none" placeholder="Courte description de l'offre..." />
+                  <Field label={tr.description}>
+                    <textarea value={editing.description ?? ''} onChange={e => setEditing(p => ({ ...p, description: e.target.value }))} rows={2} className="input-base resize-none" placeholder={tr.bannerDescPlaceholder} />
                   </Field>
-                  <Field label="Texte du bouton *">
-                    <input value={editing.button_label} onChange={e => setEditing(p => ({ ...p, button_label: e.target.value }))} className="input-base" placeholder="Voir l'offre" />
+                  <Field label={tr.buttonLabel}>
+                    <input value={editing.button_label} onChange={e => setEditing(p => ({ ...p, button_label: e.target.value }))} className="input-base" placeholder={tr.buttonLabelDefault} />
                   </Field>
-                  <Field label="Code promo (optionnel — laisser vide si aucun)">
+                  <Field label={tr.couponCodeOptional}>
                     <input value={editing.button_code ?? ''} onChange={e => setEditing(p => ({ ...p, button_code: e.target.value }))} className="input-base font-mono uppercase" placeholder="PROMO20" />
-                    <p className="text-xs text-gray-400 mt-1">Affiche le code avec un bouton "Copier".</p>
+                    <p className="text-xs text-gray-400 mt-1">{tr.couponCodeHint}</p>
                   </Field>
-                  <Field label="URL de destination *">
+                  <Field label={tr.destinationUrlRequired}>
                     <div className="flex gap-2">
                       <input value={editing.link_url} onChange={e => setEditing(p => ({ ...p, link_url: e.target.value }))} className="input-base flex-1" placeholder="https://..." />
                       {editing.link_url && (
@@ -274,18 +274,18 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
                       )}
                     </div>
                   </Field>
-                  <Field label="Ordre d'affichage">
+                  <Field label={tr.order}>
                     <input type="number" min={0} value={editing.sort_order} onChange={e => setEditing(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))} className="input-base" />
                   </Field>
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <input type="checkbox" checked={editing.is_active} onChange={e => setEditing(p => ({ ...p, is_active: e.target.checked }))} className="rounded" />
-                    Afficher dans le carrousel
+                    {tr.showInCarousel}
                   </label>
                 </div>
 
                 {/* Live preview */}
                 <div className="p-6 bg-gray-950 flex flex-col gap-4">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Aperçu</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{tr.preview}</p>
                   <div style={{ background:'rgba(255,255,255,.02)', border:'1px solid rgba(255,255,255,.07)', borderRadius:18, overflow:'hidden' }}>
                     {(imageFile || editing.image_url) ? (
                       <div style={{ width:'100%', aspectRatio:'16/9', background:'#111', position:'relative' }}>
@@ -326,14 +326,14 @@ function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
             </div>
 
             <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
-              <button onClick={closePanel} className="flex-1 border border-gray-200 rounded-lg py-2 text-sm hover:bg-gray-50">Annuler</button>
+              <button onClick={closePanel} className="flex-1 border border-gray-200 rounded-lg py-2 text-sm hover:bg-gray-50">{tr.cancel}</button>
               <button
                 onClick={handleSave}
                 disabled={saving || !editing.title || !editing.link_url}
                 className="flex-1 flex items-center justify-center gap-2 bg-primary text-white rounded-lg py-2 text-sm font-semibold hover:bg-primary-dark disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
-                {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+                {saving ? tr.saving : tr.save}
               </button>
             </div>
           </div>
@@ -402,9 +402,9 @@ function SlidesTab({ slides, setSlides }: { slides: HeroSlide[]; setSlides: (fn:
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
-                <th className="px-5 py-3 text-left">Titre</th>
-                <th className="px-5 py-3 text-left">Sous-titre</th>
-                <th className="px-5 py-3 text-center">Ordre</th>
+                <th className="px-5 py-3 text-left">{tr.title}</th>
+                <th className="px-5 py-3 text-left">{tr.subtitle}</th>
+                <th className="px-5 py-3 text-center">{tr.order}</th>
                 <th className="px-5 py-3 text-center">{tr.active}</th>
                 <th className="px-5 py-3 text-right">{tr.actions}</th>
               </tr>
@@ -440,40 +440,40 @@ function SlidesTab({ slides, setSlides }: { slides: HeroSlide[]; setSlides: (fn:
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {errorMsg && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-3">{errorMsg}</div>}
 
-              <Field label="Titre / tag (ex: NOUVEAU)">
+              <Field label={tr.titleTag}>
                 <input value={editing.tag ?? ''} onChange={e => setEditing(p => ({ ...p, tag: e.target.value }))} className="input-base" />
               </Field>
-              <Field label="Titre principal *">
+              <Field label={tr.mainTitle}>
                 <input value={editing.title ?? ''} onChange={e => setEditing(p => ({ ...p, title: e.target.value }))} className="input-base" />
               </Field>
-              <Field label="Sous-titre *">
+              <Field label={tr.subtitleRequired}>
                 <input value={editing.subtitle ?? ''} onChange={e => setEditing(p => ({ ...p, subtitle: e.target.value }))} className="input-base" />
               </Field>
-              <Field label="Description">
+              <Field label={tr.description}>
                 <textarea value={editing.description ?? ''} onChange={e => setEditing(p => ({ ...p, description: e.target.value }))} rows={3} className="input-base resize-none" />
               </Field>
-              <Field label="Image">
+              <Field label={tr.image}>
                 <div className="flex items-center gap-3">
                   {(editing.image_url || imageFile) && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={imageFile ? URL.createObjectURL(imageFile) : editing.image_url!} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-200" />
                   )}
                   <button type="button" onClick={() => fileRef.current?.click()} className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50">
-                    {imageFile ? imageFile.name : 'Choisir une image'}
+                    {imageFile ? imageFile.name : tr.chooseImage}
                   </button>
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => setImageFile(e.target.files?.[0] ?? null)} />
                 </div>
               </Field>
-              <Field label="Badge réduction (ex: -50%)">
+              <Field label={tr.discountBadge}>
                 <input value={editing.discount_label ?? ''} onChange={e => setEditing(p => ({ ...p, discount_label: e.target.value }))} className="input-base" />
               </Field>
-              <Field label="Texte du bouton">
+              <Field label={tr.buttonText}>
                 <input value={editing.button_label ?? ''} onChange={e => setEditing(p => ({ ...p, button_label: e.target.value }))} className="input-base" />
               </Field>
-              <Field label="Lien (ex: /store/nike/)">
+              <Field label={tr.link}>
                 <input value={editing.link_url ?? ''} onChange={e => setEditing(p => ({ ...p, link_url: e.target.value }))} className="input-base" />
               </Field>
-              <Field label="Ordre d'affichage">
+              <Field label={tr.orderDisplay}>
                 <input type="number" value={editing.sort_order ?? 0} onChange={e => setEditing(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))} className="input-base" />
               </Field>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -516,11 +516,11 @@ function StatsTab({ stats, setStats }: { stats: SiteStat[]; setStats: (fn: (prev
       {stats.map(stat => (
         <div key={stat.key} className="p-5 flex flex-col sm:flex-row sm:items-end gap-3">
           <div className="flex-1 space-y-1">
-            <label className="text-xs font-medium text-gray-600">Libellé</label>
+            <label className="text-xs font-medium text-gray-600">{tr.statLabel}</label>
             <input value={stat.label} onChange={e => updateLocal(stat.key, 'label', e.target.value)} className="input-base" />
           </div>
           <div className="flex-1 space-y-1">
-            <label className="text-xs font-medium text-gray-600">Valeur affichée</label>
+            <label className="text-xs font-medium text-gray-600">{tr.statValue}</label>
             <input value={stat.value} onChange={e => updateLocal(stat.key, 'value', e.target.value)} className="input-base font-mono" />
           </div>
           <button onClick={() => handleSave(stat)} disabled={savingKey === stat.key} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-dark disabled:opacity-50 shrink-0">

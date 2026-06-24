@@ -59,7 +59,7 @@ export function AutoAddAdmin() {
 
       setPublished(`/admin/boutiques/?search=${encodeURIComponent(result.name)}`)
     } catch (e: unknown) {
-      alert(`Erreur : ${(e as Error).message}`)
+      alert(`${tr.errorPrefix}${(e as Error).message}`)
     } finally {
       setPublishing(false)
     }
@@ -69,9 +69,9 @@ export function AutoAddAdmin() {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-96 gap-4">
         <CheckCircle className="h-16 w-16 text-green-500" />
-        <h2 className="text-xl font-bold text-navy">Boutique publiée !</h2>
+        <h2 className="text-xl font-bold text-navy">{tr.storePublished}</h2>
         <a href={published} className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90">
-          Voir dans l&apos;admin <ExternalLink className="h-4 w-4" />
+          {tr.seeMore} <ExternalLink className="h-4 w-4" />
         </a>
       </div>
     )
@@ -89,7 +89,7 @@ export function AutoAddAdmin() {
             value={storeName}
             onChange={e => setStoreName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            placeholder="Ex: Amazon, Nike, Zalando..."
+            placeholder={tr.autoAddPlaceholder}
             className="input-base"
           />
         </div>
@@ -111,7 +111,7 @@ export function AutoAddAdmin() {
           className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          Rechercher
+          {tr.searchBtn}
         </button>
       </div>
 
@@ -122,7 +122,7 @@ export function AutoAddAdmin() {
           <div>
             <p className="font-medium text-orange-800">{tr.notFoundAwin}</p>
             <p className="text-sm text-orange-600 mt-1">
-              Utilisez <a href="/admin/boutiques/" className="underline">l&apos;ajout manuel</a> pour créer cette boutique.
+              Use <a href="/admin/boutiques/" className="underline">{tr.manualAdd}</a> to create this store.
             </p>
           </div>
         </div>

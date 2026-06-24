@@ -47,14 +47,14 @@ export function FlaggedAdmin({ initialFlags }: { initialFlags: FlagRow[] }) {
       {flags.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-400">
           <ShieldOff className="h-10 w-10 mx-auto mb-3 opacity-30" />
-          <p>Aucun signalement en attente</p>
+          <p>{tr.noPendingReports}</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
               <tr>
-                <th className="px-5 py-3 text-left">Coupon</th>
+                <th className="px-5 py-3 text-left">{tr.coupon}</th>
                 <th className="px-5 py-3 text-left">{tr.store}</th>
                 <th className="px-5 py-3 text-left">{tr.reason}</th>
                 <th className="px-5 py-3 text-left">{tr.dateFlagged}</th>
@@ -67,7 +67,7 @@ export function FlaggedAdmin({ initialFlags }: { initialFlags: FlagRow[] }) {
                   <td className="px-5 py-3">
                     <p className="font-medium text-navy line-clamp-1">{f.coupon?.title ?? '—'}</p>
                     {f.coupon && !f.coupon.is_active && (
-                      <span className="text-xs text-red-500">Déjà désactivé</span>
+                      <span className="text-xs text-red-500">{tr.alreadyDisabled}</span>
                     )}
                   </td>
                   <td className="px-5 py-3 text-gray-500 text-xs">{f.coupon?.store?.name ?? '—'}</td>

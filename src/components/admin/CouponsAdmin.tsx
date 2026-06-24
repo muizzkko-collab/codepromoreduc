@@ -171,7 +171,7 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
       {/* Bulk actions */}
       {selected.size > 0 && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 mb-4 text-sm">
-          <span className="text-blue-700 font-medium">{selected.size} sélectionné(s)</span>
+          <span className="text-blue-700 font-medium">{selected.size} {tr.selected}</span>
           <button onClick={bulkDeactivate} className="text-orange-600 hover:underline">{tr.bulkDeactivate}</button>
           <button onClick={bulkDelete} className="text-red-600 hover:underline">{tr.bulkDelete}</button>
         </div>
@@ -204,7 +204,7 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
                 </td>
                 <td className="px-4 py-2 max-w-[200px]">
                   <div className="flex items-center gap-1.5">
-                    {c.is_featured && <span title="Coupon vedette" className="text-amber-500 text-xs">⭐</span>}
+                    {c.is_featured && <span title={tr.featuredCoupon} className="text-amber-500 text-xs">⭐</span>}
                     <p className="font-medium text-navy truncate">{c.title}</p>
                   </div>
                 </td>
@@ -234,7 +234,7 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
         </table>
         {filtered.length === 0 && <p className="text-center text-gray-400 py-8">{tr.noData}</p>}
         {filtered.length > 200 && (
-          <p className="text-center text-xs text-gray-400 py-3">Affichage des 200 premiers sur {filtered.length} résultats. Affinez les filtres.</p>
+          <p className="text-center text-xs text-gray-400 py-3">{tr.tooManyResults.replace('{n}', String(filtered.length))}</p>
         )}
       </div>
 
@@ -244,7 +244,7 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
           <div className="flex-1 bg-black/40" onClick={closePanel} />
           <div className="w-full max-w-md bg-white shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-navy">{editing.id ? tr.edit : tr.add} coupon</h2>
+              <h2 className="font-semibold text-navy">{editing.id ? tr.editCoupon : tr.addCoupon}</h2>
               <button onClick={closePanel}><X className="h-5 w-5 text-gray-400" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -277,7 +277,7 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
                   <select value={editing.type ?? 'code'} onChange={e => setEditing(p => ({ ...p, type: e.target.value }))} className="input-base">
                     <option value="code">Code</option>
                     <option value="deal">Deal</option>
-                    <option value="free_shipping">Livraison gratuite</option>
+                    <option value="free_shipping">{tr.freeShipping}</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -313,8 +313,8 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
                     className="rounded accent-amber-500 w-4 h-4"
                   />
                   <div>
-                    <span className="text-sm font-semibold text-amber-800">⭐ Coupon vedette</span>
-                    <p className="text-xs text-amber-600 mt-0.5">Ce coupon apparaîtra en première position sur la page de la boutique</p>
+                    <span className="text-sm font-semibold text-amber-800">⭐ {tr.featuredCoupon}</span>
+                    <p className="text-xs text-amber-600 mt-0.5">{tr.featuredCouponDesc}</p>
                   </div>
                 </label>
               </div>
