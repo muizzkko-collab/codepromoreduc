@@ -263,16 +263,42 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
   }
 
   let added = 0
-  let skipped = 0
+  let updated = 0
   const insertErrors: string[] = []
 
   for (const coupon of coupons) {
-    // Skip duplicates by code
     if (coupon.code) {
-      const { count } = await supabase.from('coupons')
+      // Coupon has a code — check if it already exists
+      const { data: existing } = await supabase
+        .from('coupons')
+        .select('id, title, expiry_date')
+        .eq('store_id', storeId)
+        .eq('code', coupon.code)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+
+      if (existing) {
+        // Update title/expiry if changed
+        const newTitle  = coupon.title
+        const newExpiry = coupon.expiry ?? null
+        if (existing.title !== newTitle || existing.expiry_date !== newExpiry) {
+          await supabase.from('coupons')
+            .update({ title: newTitle, expiry_date: newExpiry, scraper_source: 'firecrawl+claude' })
+            .eq('id', existing.id)
+          updated++
+        }
+        continue
+      }
+    } else {
+      // No code — check by title similarity to avoid near-duplicate deals
+      const { count } = await supabase
+        .from('coupons')
         .select('*', { count: 'exact', head: true })
-        .eq('store_id', storeId).eq('code', coupon.code).eq('is_active', true)
-      if ((count ?? 0) > 0) { skipped++; continue }
+        .eq('store_id', storeId)
+        .eq('is_active', true)
+        .ilike('title', coupon.title)
+      if ((count ?? 0) > 0) continue
     }
 
     const { error } = await supabase.from('coupons').insert({
@@ -297,11 +323,11 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
 
   const detail = [
     `${added} added`,
-    skipped > 0 ? `${skipped} skipped (duplicate)` : '',
+    updated > 0 ? `${updated} updated` : '',
     insertErrors.length > 0 ? `errors: ${insertErrors.slice(0, 2).join('; ')}` : '',
   ].filter(Boolean).join(', ')
 
-  return { store_name: storeName, method: 'scraper', added, updated: 0, deactivated: 0, message: detail || '0 coupons added' }
+  return { store_name: storeName, method: 'scraper', added, updated, deactivated: 0, message: detail || '0 coupons found' }
 }
 
 // ── Main exported action ──────────────────────────────────────────────────────
