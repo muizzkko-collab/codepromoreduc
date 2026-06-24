@@ -8,6 +8,7 @@ export async function upsertStore(payload: {
   affiliate_url: string | null; meta_title: string | null; meta_description: string | null
   is_featured: boolean; is_active: boolean; logo_url?: string | null
   popup_banner_url?: string | null; awin_merchant_id?: number | null
+  show_on_daily?: boolean; show_on_weekly?: boolean
 }) {
   try { await requirePermission('stores') } catch (e) { return { data: null, error: (e as Error).message } }
 

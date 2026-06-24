@@ -10,6 +10,7 @@ interface CouponRow {
   code: string | null; type: string | null; discount_value: string | null
   destination_url: string | null; expiry_date: string | null
   is_free_shipping: boolean; is_active: boolean; is_featured: boolean; click_count: number; created_at: string
+  is_daily_deal?: boolean; is_weekly_deal?: boolean
   store?: { id: string; name: string; slug: string; logo_url: string | null } | null
 }
 interface StoreOpt { id: string; name: string; slug: string }
@@ -17,6 +18,7 @@ interface StoreOpt { id: string; name: string; slug: string }
 const EMPTY_COUPON = {
   title: '', store_id: '', code: '', type: 'code', discount_value: '',
   destination_url: '', expiry_date: '', is_free_shipping: false, is_active: true, is_featured: false,
+  is_daily_deal: false, is_weekly_deal: false,
 }
 
 export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: CouponRow[]; stores: StoreOpt[] }) {
@@ -95,6 +97,8 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
         is_free_shipping: editing.is_free_shipping ?? false,
         is_active:       editing.is_active       ?? true,
         is_featured:     (editing as Partial<CouponRow>).is_featured ?? false,
+        is_daily_deal:   (editing as Partial<CouponRow>).is_daily_deal ?? false,
+        is_weekly_deal:  (editing as Partial<CouponRow>).is_weekly_deal ?? false,
       }
       const { data, error } = await upsertCoupon(payload)
       if (error) { setSaveError(error); return }
@@ -362,6 +366,28 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
                     <span className="text-sm font-semibold text-amber-800">⭐ {tr.featuredCoupon}</span>
                     <p className="text-xs text-amber-600 mt-0.5">{tr.featuredCouponDesc}</p>
                   </div>
+                </label>
+              </div>
+              {/* Daily / Weekly deals */}
+              <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 space-y-2">
+                <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Pages Deals</p>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(editing as Partial<CouponRow>).is_daily_deal ?? false}
+                    onChange={e => setEditing(p => ({ ...p, is_daily_deal: e.target.checked }))}
+                    className="rounded accent-sky-600 w-4 h-4"
+                  />
+                  Offre du Jour
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(editing as Partial<CouponRow>).is_weekly_deal ?? false}
+                    onChange={e => setEditing(p => ({ ...p, is_weekly_deal: e.target.checked }))}
+                    className="rounded accent-sky-600 w-4 h-4"
+                  />
+                  Offre de la Semaine
                 </label>
               </div>
             </div>

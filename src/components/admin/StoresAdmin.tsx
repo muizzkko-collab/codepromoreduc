@@ -12,6 +12,7 @@ interface Store {
   affiliate_url: string | null; meta_title: string | null; meta_description: string | null
   coupon_count: number; is_featured: boolean; is_active: boolean; click_count: number
   popup_banner_url: string | null; awin_merchant_id?: number | null
+  show_on_daily?: boolean; show_on_weekly?: boolean
 }
 
 interface AwinResult {
@@ -27,7 +28,7 @@ function slugify(s: string) {
   return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
-const EMPTY: Partial<Store> = { name: '', slug: '', affiliate_url: '', meta_title: '', meta_description: '', is_featured: false, is_active: true, popup_banner_url: '', awin_merchant_id: null }
+const EMPTY: Partial<Store> = { name: '', slug: '', affiliate_url: '', meta_title: '', meta_description: '', is_featured: false, is_active: true, popup_banner_url: '', awin_merchant_id: null, show_on_daily: false, show_on_weekly: false }
 
 export function StoresAdmin({ initialStores }: Props) {
   const { tr } = useLang()
@@ -183,6 +184,8 @@ export function StoresAdmin({ initialStores }: Props) {
         logo_url:          editing.logo_url ?? null,
         popup_banner_url:  editing.popup_banner_url || null,
         awin_merchant_id:  editing.awin_merchant_id ?? null,
+        show_on_daily:     editing.show_on_daily   ?? false,
+        show_on_weekly:    editing.show_on_weekly   ?? false,
       }
 
       // Upload logo first if a new file was chosen
@@ -581,7 +584,7 @@ export function StoresAdmin({ initialStores }: Props) {
                   />
                 )}
               </Field>
-              <div className="flex gap-6">
+              <div className="flex gap-6 flex-wrap">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
@@ -599,6 +602,27 @@ export function StoresAdmin({ initialStores }: Props) {
                     className="rounded"
                   />
                   {tr.active}
+                </label>
+              </div>
+              <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 space-y-2">
+                <p className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Affichage Deals</p>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editing.show_on_daily ?? false}
+                    onChange={e => setEditing(p => ({ ...p, show_on_daily: e.target.checked }))}
+                    className="rounded accent-sky-600"
+                  />
+                  Afficher sur Offres du Jour
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editing.show_on_weekly ?? false}
+                    onChange={e => setEditing(p => ({ ...p, show_on_weekly: e.target.checked }))}
+                    className="rounded accent-sky-600"
+                  />
+                  Afficher sur Offres de la Semaine
                 </label>
               </div>
             </div>

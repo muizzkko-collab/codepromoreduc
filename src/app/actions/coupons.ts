@@ -6,6 +6,7 @@ export async function upsertCoupon(payload: {
   id?: string; store_id: string; title: string; code: string | null
   type: string | null; discount_value: string | null; destination_url: string | null
   expiry_date: string | null; is_active: boolean; is_free_shipping: boolean; is_featured?: boolean
+  is_daily_deal?: boolean; is_weekly_deal?: boolean
 }) {
   try { await requirePermission('coupons') } catch (e) { return { data: null, error: (e as Error).message } }
 
