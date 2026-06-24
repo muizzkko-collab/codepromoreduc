@@ -124,11 +124,12 @@ interface ExtractedCoupon {
 // lareduction.fr is Cloudflare-protected (403) — excluded
 const TARGET_DOMAINS = ['radins.com', 'reduc.fr', 'ma-reduc.com', 'ouest-france.fr']
 
-// Error/404 page indicators
-const ERROR_PHRASES = ['ne pas exister', 'page introuvable', 'oups !', 'aucun résultat', 'not found', 'erreur 404', 'page not found', 'aucune offre']
+// Hard 404/error page indicators — only match in the very first 300 chars (page title area)
+const ERROR_PHRASES = ['page introuvable', 'erreur 404', 'page not found', '404 not found']
 
 function isErrorPage(md: string): boolean {
-  const lower = md.toLowerCase().slice(0, 600)
+  // Only look in first 300 chars (the page title) to avoid false positives
+  const lower = md.toLowerCase().slice(0, 300)
   return ERROR_PHRASES.some(p => lower.includes(p))
 }
 
@@ -147,32 +148,46 @@ async function firecrawlScrape(url: string): Promise<string> {
   } catch { return '' }
 }
 
-// Search per domain: find the store page URL, then scrape it
-async function findAndScrape(storeName: string, domain: string): Promise<string> {
-  try {
-    // Search for the store's coupon page on this specific domain
+// Search Firecrawl for a store's coupon page on a specific domain
+async function searchStoreUrl(storeName: string, domain: string): Promise<string> {
+  const trySearch = async (query: string): Promise<string> => {
     const res = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `"${storeName}" code promo réduction site:${domain}`,
-        limit: 2,
-      }),
+      body: JSON.stringify({ query, limit: 3 }),
       signal: AbortSignal.timeout(20000),
     })
     if (!res.ok) return ''
     const json = await res.json()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results = (json?.data ?? []) as any[]
-    if (!results.length) return ''
+    // Return first URL that is domain-specific (not the homepage)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hit = results.find((r: any) => {
+      const url: string = r.url ?? ''
+      return url.includes(domain) && url.length > `https://www.${domain}`.length + 5
+    })
+    return (hit?.url as string) ?? ''
+  }
 
-    // Take the first result URL that looks like a store/coupon page (not a list page)
-    const url = results[0]?.url as string | undefined
+  // Try 1: exact store name with quotes
+  let url = await trySearch(`"${storeName}" code promo site:${domain}`).catch(() => '')
+
+  // Try 2: without quotes (broader match for hyphenated/accented names)
+  if (!url) url = await trySearch(`${storeName} code promo réduction site:${domain}`).catch(() => '')
+
+  // Try 3: just the store name on that domain (last resort)
+  if (!url) url = await trySearch(`${storeName} site:${domain}`).catch(() => '')
+
+  return url
+}
+
+// Search per domain: find the store page URL, then scrape it
+async function findAndScrape(storeName: string, domain: string): Promise<string> {
+  try {
+    const url = await searchStoreUrl(storeName, domain)
     if (!url) return ''
-
-    // Scrape the actual coupon page
-    const md = await firecrawlScrape(url)
-    return md
+    return await firecrawlScrape(url)
   } catch { return '' }
 }
 
@@ -187,7 +202,7 @@ async function scrapeWithFirecrawlAndClaude(storeName: string, _storeSlug: strin
   const markdownChunks: string[] = []
   results.forEach((r, i) => {
     const md = r.status === 'fulfilled' ? r.value : ''
-    if (md.length > 400) {
+    if (md.length > 200) {
       // Skip the first 500 chars (usually site header/nav) then take 5000 chars of actual content
       const content = md.length > 500 ? md.slice(500, 5500) : md.slice(0, 5000)
       markdownChunks.push(`[source: ${TARGET_DOMAINS[i]}]\n${content}`)
@@ -306,8 +321,19 @@ export async function updateStore(storeId: string): Promise<{ data: UpdateResult
 
   try {
     if (hasNetwork) {
-      const result = await syncFromNetwork(store.id, store.name, store.awin_merchant_id, store.network_merchant_ids)
-      return { data: result, error: null }
+      const networkResult = await syncFromNetwork(store.id, store.name, store.awin_merchant_id, store.network_merchant_ids)
+      // If the network returned nothing, fall back to the Firecrawl scraper
+      if (networkResult.added === 0 && networkResult.updated === 0) {
+        const scraperResult = await syncFromScraper(store.id, store.name, store.slug)
+        return {
+          data: {
+            ...scraperResult,
+            message: `Network had no new offers → scraper: ${scraperResult.message}`,
+          },
+          error: null,
+        }
+      }
+      return { data: networkResult, error: null }
     } else {
       const result = await syncFromScraper(store.id, store.name, store.slug)
       return { data: result, error: null }
