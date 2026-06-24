@@ -62,7 +62,8 @@ function RevealContent() {
         aria-hidden="true"
         tabIndex={-1}
         style={{
-          position: 'fixed', inset: 0, width: '100%', height: '100%',
+          position: 'fixed', top: 64, left: 0, right: 0, bottom: 0,
+          width: '100%', height: 'calc(100% - 64px)',
           border: 'none', pointerEvents: 'none',
           filter: 'blur(8px) brightness(0.35) saturate(0.6)',
           transform: 'scale(1.06)',
@@ -70,13 +71,13 @@ function RevealContent() {
       />
 
       {/* ── Overlay ────────────────────────────────────────────────── */}
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,18,.65)', backdropFilter: 'blur(2px)' }} />
+      <div style={{ position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, background: 'rgba(4,6,18,.65)', backdropFilter: 'blur(2px)' }} />
 
       {/* ── Scrollable centering container ─────────────────────────── */}
       <div style={{
-        position: 'fixed', inset: 0, overflowY: 'auto',
+        position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, overflowY: 'auto',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        padding: '32px 16px 48px', zIndex: 10,
+        padding: '24px 16px 48px', zIndex: 10,
       }}>
 
         {/* ── Modal card ───────────────────────────────────────────── */}
