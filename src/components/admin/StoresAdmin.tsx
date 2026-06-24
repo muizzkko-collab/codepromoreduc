@@ -2,8 +2,9 @@
 import { useState, useMemo, useRef, useTransition, useEffect } from 'react'
 import { useLang } from './LangContext'
 import { StoreLogo } from '@/components/StoreLogo'
-import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link, RefreshCw } from 'lucide-react'
 import { upsertStore, deleteStore, toggleStoreField, uploadStoreLogo } from '@/app/actions/stores'
+import { updateStore } from '@/app/actions/update-store'
 
 interface Store {
   id: string; name: string; slug: string; logo_url: string | null
@@ -40,6 +41,8 @@ export function StoresAdmin({ initialStores }: Props) {
   const [saveError, setSaveError]       = useState<string | null>(null)
   const [logoFile, setLogoFile]         = useState<File | null>(null)
   const fileRef                         = useRef<HTMLInputElement>(null)
+  const [updatingId, setUpdatingId]     = useState<string | null>(null)
+  const [updateToast, setUpdateToast]   = useState<{ msg: string; ok: boolean } | null>(null)
 
   // Awin search state (for new stores)
   const [awinQuery, setAwinQuery]       = useState('')
@@ -141,6 +144,28 @@ export function StoresAdmin({ initialStores }: Props) {
     }
   }
 
+  async function handleUpdate(store: Store) {
+    setUpdatingId(store.id)
+    setUpdateToast(null)
+    try {
+      const { data, error } = await updateStore(store.id)
+      if (error) {
+        setUpdateToast({ msg: `Error: ${error}`, ok: false })
+      } else if (data) {
+        setUpdateToast({ msg: `${store.name}: ${data.message} (via ${data.method})`, ok: true })
+        // Update local coupon count
+        if (data.added > 0) {
+          setStores(prev => prev.map(s => s.id === store.id ? { ...s, coupon_count: s.coupon_count + data.added } : s))
+        }
+      }
+    } catch (e: unknown) {
+      setUpdateToast({ msg: `Error: ${(e as Error).message}`, ok: false })
+    } finally {
+      setUpdatingId(null)
+      setTimeout(() => setUpdateToast(null), 6000)
+    }
+  }
+
   function handleDelete(id: string) {
     if (!confirm(tr.deleteConfirm)) return
     startTransition(async () => {
@@ -187,6 +212,13 @@ export function StoresAdmin({ initialStores }: Props) {
         {filtered.length} {tr.storesFound} {search && `"${search}"`} — {tr.storesPage} {page + 1}/{Math.max(totalPages, 1)}
       </p>
 
+      {/* Update toast */}
+      {updateToast && (
+        <div className={`text-sm px-4 py-2.5 rounded-lg font-medium ${updateToast.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+          {updateToast.msg}
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
@@ -218,6 +250,14 @@ export function StoresAdmin({ initialStores }: Props) {
                 </td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex justify-end gap-1">
+                    <button
+                      onClick={() => handleUpdate(s)}
+                      disabled={updatingId === s.id || isPending}
+                      className="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-green-50 disabled:opacity-40"
+                      title="Update coupons"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${updatingId === s.id ? 'animate-spin text-green-600' : ''}`} />
+                    </button>
                     <button
                       onClick={() => openEdit(s)}
                       className="p-1.5 text-gray-400 hover:text-navy rounded hover:bg-gray-100"

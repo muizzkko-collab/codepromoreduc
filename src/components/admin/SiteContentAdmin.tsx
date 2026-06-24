@@ -74,9 +74,10 @@ export function SiteContentAdmin({
 const MAX_BANNERS = 4
 
 function BannerTab({ initialBanners }: { initialBanners: SidebarBanner[] }) {
+  const { tr } = useLang()
   const [banners,    setBanners]    = useState<SidebarBanner[]>(initialBanners)
   const [panelOpen,  setPanelOpen]  = useState(false)
-  const [editing,    setEditing]    = useState<Omit<SidebarBanner, 'updated_at'> & { id?: string }>({ ...EMPTY_BANNER })
+  const [editing,    setEditing]    = useState<Omit<SidebarBanner, 'id' | 'updated_at'> & { id?: string }>({ ...EMPTY_BANNER })
   const [imageFile,  setImageFile]  = useState<File | null>(null)
   const [saving,     setSaving]     = useState(false)
   const [errorMsg,   setErrorMsg]   = useState<string | null>(null)
