@@ -284,7 +284,7 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
         const newExpiry = coupon.expiry ?? null
         if (existing.title !== newTitle || existing.expiry_date !== newExpiry) {
           await supabase.from('coupons')
-            .update({ title: newTitle, expiry_date: newExpiry, scraper_source: 'firecrawl+claude' })
+            .update({ title: newTitle, expiry_date: newExpiry, is_featured: true, scraper_source: 'firecrawl+claude' })
             .eq('id', existing.id)
           updated++
         }
@@ -310,6 +310,7 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
       expiry_date:      coupon.expiry ?? null,
       destination_url:  null,
       is_active:        true,
+      is_featured:      coupon.type === 'code' && !!coupon.code,
       is_free_shipping: coupon.type === 'shipping',
       network:          'scraper',
       scraper_source:   'firecrawl+claude',
