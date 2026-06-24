@@ -190,6 +190,8 @@ export function Header({ categories, topStores }: Props) {
                 </div>
               </div>
               <Link href="/all-stores/" className="hover:text-white transition-colors">Toutes les boutiques</Link>
+              <Link href="/daily-deals/" className="hover:text-white transition-colors text-amber-400 hover:text-amber-300">🔥 Offres du Jour</Link>
+              <Link href="/weekly-deals/" className="hover:text-white transition-colors text-emerald-400 hover:text-emerald-300">⚡ Offres Semaine</Link>
             </nav>
           </div>
 
@@ -208,6 +210,8 @@ export function Header({ categories, topStores }: Props) {
             <SearchBar onNavigate={() => setOpen(false)} />
             <div className="flex flex-col gap-2 text-sm text-white/70">
               <Link href="/all-stores/" onClick={() => setOpen(false)} className="py-2 hover:text-primary">Boutiques</Link>
+              <Link href="/daily-deals/" onClick={() => setOpen(false)} className="py-2 text-amber-400">🔥 Offres du Jour</Link>
+              <Link href="/weekly-deals/" onClick={() => setOpen(false)} className="py-2 text-emerald-400">⚡ Offres Semaine</Link>
               <Link href="/#categories" onClick={() => setOpen(false)} className="py-2 hover:text-primary">Catégories</Link>
             </div>
           </div>

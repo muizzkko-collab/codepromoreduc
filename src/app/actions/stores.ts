@@ -33,7 +33,7 @@ export async function deleteStore(id: string) {
   return { error: error?.message ?? null }
 }
 
-export async function toggleStoreField(id: string, field: 'is_active' | 'is_featured', value: boolean) {
+export async function toggleStoreField(id: string, field: 'is_active' | 'is_featured' | 'show_on_daily' | 'show_on_weekly', value: boolean) {
   try { await requirePermission('stores') } catch (e) { return { error: (e as Error).message } }
   const supabase = createAdminClient()
   const { error } = await supabase.from('stores').update({ [field]: value }).eq('id', id)

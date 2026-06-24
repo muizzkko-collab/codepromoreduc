@@ -250,7 +250,7 @@ export function StoresAdmin({ initialStores }: Props) {
     })
   }
 
-  function handleToggle(s: Store, field: 'is_active' | 'is_featured') {
+  function handleToggle(s: Store, field: 'is_active' | 'is_featured' | 'show_on_daily' | 'show_on_weekly') {
     const newVal = !s[field]
     setStores(prev => prev.map(x => x.id === s.id ? { ...x, [field]: newVal } : x))
     startTransition(async () => {
@@ -339,6 +339,8 @@ export function StoresAdmin({ initialStores }: Props) {
               <th className="px-4 py-3 text-left hidden md:table-cell">{tr.slug}</th>
               <th className="px-4 py-3 text-center">{tr.couponCount}</th>
               <th className="px-4 py-3 text-center hidden lg:table-cell">{tr.featured}</th>
+              <th className="px-4 py-3 text-center hidden xl:table-cell" title="Offres du Jour">🔥 Jour</th>
+              <th className="px-4 py-3 text-center hidden xl:table-cell" title="Offres Semaine">⚡ Sem.</th>
               <th className="px-4 py-3 text-center">{tr.active}</th>
               <th className="px-4 py-3 text-right">{tr.actions}</th>
             </tr>
@@ -354,6 +356,12 @@ export function StoresAdmin({ initialStores }: Props) {
                 <td className="px-4 py-2 text-center">{s.coupon_count}</td>
                 <td className="px-4 py-2 text-center hidden lg:table-cell">
                   <Toggle value={s.is_featured} onChange={() => handleToggle(s, 'is_featured')} />
+                </td>
+                <td className="px-4 py-2 text-center hidden xl:table-cell">
+                  <Toggle value={!!s.show_on_daily} onChange={() => handleToggle(s, 'show_on_daily')} />
+                </td>
+                <td className="px-4 py-2 text-center hidden xl:table-cell">
+                  <Toggle value={!!s.show_on_weekly} onChange={() => handleToggle(s, 'show_on_weekly')} />
                 </td>
                 <td className="px-4 py-2 text-center">
                   <Toggle value={s.is_active} onChange={() => handleToggle(s, 'is_active')} />

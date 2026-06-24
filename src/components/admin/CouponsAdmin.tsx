@@ -242,6 +242,8 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
               <th className="px-4 py-3 text-left">{tr.type}</th>
               <th className="px-4 py-3 text-left">{tr.discount}</th>
               <th className="px-4 py-3 text-left">{tr.expiry}</th>
+              <th className="px-4 py-3 text-center hidden xl:table-cell" title="Offre du Jour">🔥 Jour</th>
+              <th className="px-4 py-3 text-center hidden xl:table-cell" title="Offre Semaine">⚡ Sem.</th>
               <th className="px-4 py-3 text-center">{tr.active}</th>
               <th className="px-4 py-3 text-right">{tr.actions}</th>
             </tr>
@@ -268,6 +270,16 @@ export function CouponsAdmin({ initialCoupons, stores }: { initialCoupons: Coupo
                   {c.expiry_date ? (
                     <span className={c.expiry_date < today ? 'text-red-500' : ''}>{formatDate(c.expiry_date)}</span>
                   ) : '—'}
+                </td>
+                <td className="px-4 py-2 text-center hidden xl:table-cell">
+                  <span className={`inline-block w-5 h-5 rounded-full text-xs flex items-center justify-center ${c.is_daily_deal ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-300'}`}>
+                    {c.is_daily_deal ? '🔥' : '·'}
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-center hidden xl:table-cell">
+                  <span className={`inline-block w-5 h-5 rounded-full text-xs flex items-center justify-center ${c.is_weekly_deal ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-300'}`}>
+                    {c.is_weekly_deal ? '⚡' : '·'}
+                  </span>
                 </td>
                 <td className="px-4 py-2 text-center">
                   <Toggle value={c.is_active} onChange={() => handleToggleActive(c)} />
