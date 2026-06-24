@@ -125,9 +125,18 @@ function StoreLogo({ store, size }: { store: Store; size: number }) {
   )
 }
 
-/** Priority: coupon deep-link > store affiliate URL (already resolved server-side) */
+const OWN_DOMAINS = ['codepromoreduc.fr', 'localhost']
+
+/** Use coupon's deep-link only when it points to an external site, otherwise use the store affiliate URL */
 function couponUrl(coupon: { destination_url?: string | null }, storeAffiliateUrl: string): string {
-  return coupon.destination_url || storeAffiliateUrl
+  const dest = coupon.destination_url
+  if (dest) {
+    try {
+      const host = new URL(dest).hostname.replace(/^www\./, '')
+      if (!OWN_DOMAINS.some(d => host === d || host.endsWith('.' + d))) return dest
+    } catch { /* invalid URL, ignore */ }
+  }
+  return storeAffiliateUrl
 }
 
 export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners, storeAffiliateUrl }: Props) {
@@ -455,9 +464,10 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners
                   <div className="similar-store-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
                     {similarCoupons.slice(0,8).map(c => {
                       const sStore = c.store
-                      const affUrl = (c as unknown as { destination_url?: string | null }).destination_url
-                        || sStore?.affiliate_url
-                        || `https://codepromoreduc.fr/store/${sStore?.slug}/`
+                      const affUrl = couponUrl(
+                        c as { destination_url?: string | null },
+                        sStore?.affiliate_url || `https://codepromoreduc.fr/store/${sStore?.slug}/`
+                      )
                       const hasCode = !!c.code
                       return (
                         <div

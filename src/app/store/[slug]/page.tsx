@@ -47,7 +47,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /** Build the store-level affiliate tracking URL from whatever network data is available */
 function resolveStoreAffiliateUrl(store: Store, siteUrl: string): string {
-  if (store.affiliate_url) return store.affiliate_url
+  const aff = store.affiliate_url?.trim()
+  if (aff) return aff
   // Generate Awin tracking link when merchant ID is known
   if (store.awin_merchant_id) {
     const pubId = process.env.AWIN_PUBLISHER_ID ?? '857351'

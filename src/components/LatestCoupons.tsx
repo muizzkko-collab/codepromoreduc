@@ -41,9 +41,17 @@ function extractDiscount(coupon: Coupon): string {
   return coupon.code ? '••••••' : 'Offre'
 }
 
+const OWN_DOMAINS_LC = ['codepromoreduc.fr', 'localhost']
+
 function getAffiliateUrl(coupon: Coupon & { store: Store }): string {
-  return (coupon as unknown as { destination_url?: string }).destination_url
-    || coupon.store?.affiliate_url
+  const dest = (coupon as unknown as { destination_url?: string | null }).destination_url
+  if (dest) {
+    try {
+      const host = new URL(dest).hostname.replace(/^www\./, '')
+      if (!OWN_DOMAINS_LC.some(d => host === d || host.endsWith('.' + d))) return dest
+    } catch { /* ignore */ }
+  }
+  return coupon.store?.affiliate_url?.trim()
     || `https://codepromoreduc.fr/store/${coupon.store?.slug}/`
 }
 

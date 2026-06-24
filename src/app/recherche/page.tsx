@@ -93,7 +93,11 @@ export default async function SearchPage({ searchParams }: Props) {
                     couponType={c.code ? 'code' : 'deal'}
                     storeLogoUrl={c.store?.logo_url ?? null}
                     storeName={c.store?.name ?? 'Boutique'}
-                    affiliateUrl={(c as unknown as { destination_url?: string }).destination_url || c.store?.affiliate_url || '/'}
+                    affiliateUrl={(() => {
+                      const dest = (c as unknown as { destination_url?: string | null }).destination_url
+                      if (dest) { try { const h = new URL(dest).hostname.replace(/^www\./, ''); if (!['codepromoreduc.fr','localhost'].some(d => h === d || h.endsWith('.'+d))) return dest } catch { /* */ } }
+                      return c.store?.affiliate_url?.trim() || `https://codepromoreduc.fr/store/${c.store?.slug}/`
+                    })()}
                     expiryDate={c.expiry_date ?? null}
                     variant="homepage"
                   />
