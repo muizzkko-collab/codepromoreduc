@@ -188,18 +188,20 @@ async function scrapeWithFirecrawlAndClaude(storeName: string, _storeSlug: strin
   results.forEach((r, i) => {
     const md = r.status === 'fulfilled' ? r.value : ''
     if (md.length > 400) {
-      markdownChunks.push(`[source: ${TARGET_DOMAINS[i]}]\n${md.slice(0, 2500)}`)
+      // Skip the first 500 chars (usually site header/nav) then take 5000 chars of actual content
+      const content = md.length > 500 ? md.slice(500, 5500) : md.slice(0, 5000)
+      markdownChunks.push(`[source: ${TARGET_DOMAINS[i]}]\n${content}`)
     }
   })
 
   if (markdownChunks.length === 0) return []
 
-  const combinedContent = markdownChunks.join('\n\n---\n\n').slice(0, 9000)
+  const combinedContent = markdownChunks.join('\n\n---\n\n').slice(0, 14000)
 
   // Step 3 — Claude extracts structured coupons from all the combined content
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1500,
+    max_tokens: 2000,
     messages: [{
       role: 'user',
       content: `You are a coupon extraction assistant. Extract ALL valid coupon codes and deals for the store "${storeName}" from the following French coupon website content.
@@ -246,6 +248,8 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
   }
 
   let added = 0
+  let skipped = 0
+  const insertErrors: string[] = []
 
   for (const coupon of coupons) {
     // Skip duplicates by code
@@ -253,26 +257,36 @@ async function syncFromScraper(storeId: string, storeName: string, storeSlug: st
       const { count } = await supabase.from('coupons')
         .select('*', { count: 'exact', head: true })
         .eq('store_id', storeId).eq('code', coupon.code).eq('is_active', true)
-      if ((count ?? 0) > 0) continue
+      if ((count ?? 0) > 0) { skipped++; continue }
     }
 
     const { error } = await supabase.from('coupons').insert({
-      store_id:        storeId,
-      title:           coupon.title,
-      code:            coupon.code,
-      coupon_type:     coupon.type,
-      discount_value:  null,
-      expiry_date:     coupon.expiry,
-      destination_url: null,
-      is_active:       true,
+      store_id:         storeId,
+      title:            coupon.title,
+      code:             coupon.code ?? null,
+      type:             coupon.type,
+      discount_value:   null,
+      expiry_date:      coupon.expiry ?? null,
+      destination_url:  null,
+      is_active:        true,
       is_free_shipping: coupon.type === 'shipping',
-      network:         'scraper',
-      scraper_source:  'firecrawl+claude',
+      network:          'scraper',
+      scraper_source:   'firecrawl+claude',
     })
-    if (!error) added++
+    if (error) {
+      insertErrors.push(`${coupon.title}: ${error.message}`)
+    } else {
+      added++
+    }
   }
 
-  return { store_name: storeName, method: 'scraper', added, updated: 0, deactivated: 0, message: `${added} coupons scraped and added` }
+  const detail = [
+    `${added} added`,
+    skipped > 0 ? `${skipped} skipped (duplicate)` : '',
+    insertErrors.length > 0 ? `errors: ${insertErrors.slice(0, 2).join('; ')}` : '',
+  ].filter(Boolean).join(', ')
+
+  return { store_name: storeName, method: 'scraper', added, updated: 0, deactivated: 0, message: detail || '0 coupons added' }
 }
 
 // ── Main exported action ──────────────────────────────────────────────────────
