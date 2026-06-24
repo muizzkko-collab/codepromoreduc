@@ -2,73 +2,50 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const maxDuration = 60
 
-export async function GET(request: NextRequest) {
-  const storeName = request.nextUrl.searchParams.get('store') ?? 'About You'
-  const storeSlug = request.nextUrl.searchParams.get('slug') ?? 'about-you'
+const FC_KEY = () => process.env.FIRECRAWL_API_KEY ?? ''
 
-  const FC_KEY = process.env.FIRECRAWL_API_KEY
-
-  const testUrl = `https://www.radins.com/codes-promo/${storeSlug}/`
-
-  // Test 1: plain scrape
-  const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+async function fcScrape(url: string) {
+  const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${FC_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url: testUrl, formats: ['markdown'] }),
+    headers: { Authorization: `Bearer ${FC_KEY()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, formats: ['markdown'] }),
+    signal: AbortSignal.timeout(25000),
+  })
+  const json = await res.json()
+  return { status: res.status, markdownLength: (json?.data?.markdown ?? '').length, preview: (json?.data?.markdown ?? '').slice(0, 400), raw: json }
+}
+
+async function fcSearch(query: string) {
+  const res = await fetch('https://api.firecrawl.dev/v1/search', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${FC_KEY()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, limit: 3 }),
     signal: AbortSignal.timeout(20000),
   })
+  const json = await res.json()
+  return { status: res.status, raw: json }
+}
 
-  const scrapeRaw = await scrapeRes.text()
-  let scrapeParsed: unknown = null
-  try { scrapeParsed = JSON.parse(scrapeRaw) } catch { scrapeParsed = scrapeRaw }
+export async function GET(request: NextRequest) {
+  const storeName = request.nextUrl.searchParams.get('store') ?? 'About You'
 
-  // Test 2: search
-  const searchRes = await fetch('https://api.firecrawl.dev/v1/search', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${FC_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: `${storeName} code promo site:radins.com`, limit: 3 }),
-    signal: AbortSignal.timeout(20000),
-  }).catch(() => ({ ok: false, status: 0, text: async () => '' }))
+  // Test scraping the exact real URLs provided by the user
+  const realUrls = [
+    `https://www.lareduction.fr/s/aboutyou.fr`,
+    `https://www.radins.com/code-promo/about-you/`,
+    `https://www.reduc.fr/codes-promo/aboutyou`,
+    `https://www.ma-reduc.com/reductions-pour-about-you.php`,
+    `https://www.ouest-france.fr/shopping/code-promo/about-you-162`,
+  ]
 
-  const searchRaw = await searchRes.text()
-  let searchParsed: unknown = null
-  try { searchParsed = JSON.parse(searchRaw) } catch { searchParsed = searchRaw }
+  const [r1, r2, r3, r4, r5] = await Promise.all(realUrls.map(url => fcScrape(url).catch(e => ({ error: String(e) }))))
 
-  // Test 3: plain fetch (no Firecrawl)
-  const plainRes = await fetch(testUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml',
-      'Accept-Language': 'fr-FR,fr;q=0.9',
-    },
-    signal: AbortSignal.timeout(10000),
-  }).catch(() => null)
-
-  const plainHtml = plainRes ? await plainRes.text() : ''
+  // Test search approach
+  const searchTest = await fcSearch(`"${storeName}" code promo site:radins.com`).catch(e => ({ error: String(e) }))
 
   return NextResponse.json({
-    storeName, storeSlug, testUrl,
-    scrape: {
-      status: scrapeRes.status,
-      keys: scrapeParsed && typeof scrapeParsed === 'object' ? Object.keys(scrapeParsed as object) : [],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      dataKeys: (scrapeParsed as any)?.data ? Object.keys((scrapeParsed as any).data) : [],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      markdownLength: ((scrapeParsed as any)?.data?.markdown ?? '').length,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      markdownPreview: ((scrapeParsed as any)?.data?.markdown ?? '').slice(0, 300),
-      raw: typeof scrapeParsed === 'string' ? scrapeParsed.slice(0, 500) : scrapeParsed,
-    },
-    search: {
-      status: searchRes.status ?? 0,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      keys: searchParsed && typeof searchParsed === 'object' ? Object.keys(searchParsed as object) : [],
-      raw: typeof searchParsed === 'string' ? searchParsed.slice(0, 500) : searchParsed,
-    },
-    plainFetch: {
-      status: plainRes?.status ?? 0,
-      htmlLength: plainHtml.length,
-      htmlPreview: plainHtml.slice(0, 500),
-    },
+    storeName,
+    scrapeRealUrls: { lareduction: r1, radins: r2, reduc: r3, maReduc: r4, ouestFrance: r5 },
+    searchTest,
   })
 }

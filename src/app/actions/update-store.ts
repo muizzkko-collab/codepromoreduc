@@ -121,11 +121,14 @@ interface ExtractedCoupon {
 
 // ── Firecrawl helpers ─────────────────────────────────────────────────────────
 
-// Error/404 page indicators common on French coupon sites
-const ERROR_PHRASES = ['ne pas exister', 'page introuvable', '404', 'oups !', 'aucun résultat', 'not found', 'page not found', 'erreur 404']
+// lareduction.fr is Cloudflare-protected (403) — excluded
+const TARGET_DOMAINS = ['radins.com', 'reduc.fr', 'ma-reduc.com', 'ouest-france.fr']
+
+// Error/404 page indicators
+const ERROR_PHRASES = ['ne pas exister', 'page introuvable', 'oups !', 'aucun résultat', 'not found', 'erreur 404', 'page not found', 'aucune offre']
 
 function isErrorPage(md: string): boolean {
-  const lower = md.toLowerCase().slice(0, 500)
+  const lower = md.toLowerCase().slice(0, 600)
   return ERROR_PHRASES.some(p => lower.includes(p))
 }
 
@@ -133,30 +136,29 @@ async function firecrawlScrape(url: string): Promise<string> {
   try {
     const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, formats: ['markdown'] }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(25000),
     })
     if (!res.ok) return ''
     const json = await res.json()
     const md = (json?.data?.markdown as string | undefined) ?? ''
-    if (isErrorPage(md)) return ''
-    return md
+    return isErrorPage(md) ? '' : md
   } catch { return '' }
 }
 
-// Search on a site and return markdown content from the top result
-async function firecrawlSearchWithContent(storeName: string, domain: string): Promise<string> {
+// Search per domain: find the store page URL, then scrape it
+async function findAndScrape(storeName: string, domain: string): Promise<string> {
   try {
+    // Search for the store's coupon page on this specific domain
     const res = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        query: `${storeName} code promo réduction site:${domain}`,
-        limit: 1,
-        scrapeOptions: { formats: ['markdown'] },
+        query: `"${storeName}" code promo réduction site:${domain}`,
+        limit: 2,
       }),
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(20000),
     })
     if (!res.ok) return ''
     const json = await res.json()
@@ -164,58 +166,31 @@ async function firecrawlSearchWithContent(storeName: string, domain: string): Pr
     const results = (json?.data ?? []) as any[]
     if (!results.length) return ''
 
-    // Try inline markdown from search result first
-    const inlineMarkdown = (results[0]?.markdown as string | undefined) ?? ''
-    if (inlineMarkdown && !isErrorPage(inlineMarkdown)) return inlineMarkdown
+    // Take the first result URL that looks like a store/coupon page (not a list page)
+    const url = results[0]?.url as string | undefined
+    if (!url) return ''
 
-    // Fallback: scrape the URL that search found
-    const foundUrl = results[0]?.url as string | undefined
-    if (foundUrl) return firecrawlScrape(foundUrl)
-    return ''
+    // Scrape the actual coupon page
+    const md = await firecrawlScrape(url)
+    return md
   } catch { return '' }
 }
 
-// ── The 5 target coupon sites ─────────────────────────────────────────────────
-const COUPON_SITES = [
-  { domain: 'lareduction.fr',  url: (s: string) => `https://www.lareduction.fr/boutique/${s}/` },
-  { domain: 'radins.com',      url: (s: string) => `https://www.radins.com/code-promo/${s}/` },
-  { domain: 'reduc.fr',        url: (s: string) => `https://www.reduc.fr/boutique/${s}/` },
-  { domain: 'ma-reduc.com',    url: (s: string) => `https://www.ma-reduc.com/${s}-code-promo/` },
-  { domain: 'ouest-france.fr', url: (s: string) => `https://www.ouest-france.fr/bons-plans/code-promo/${s}/` },
-]
-
-async function scrapeWithFirecrawlAndClaude(storeName: string, storeSlug: string): Promise<ExtractedCoupon[]> {
+async function scrapeWithFirecrawlAndClaude(storeName: string, _storeSlug: string): Promise<ExtractedCoupon[]> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-  // Step 1 — try direct URL for each site in parallel
-  const directResults = await Promise.allSettled(
-    COUPON_SITES.map(site => firecrawlScrape(site.url(storeSlug)))
+  // Search all 5 target sites in parallel to find their store-specific coupon pages
+  const results = await Promise.allSettled(
+    TARGET_DOMAINS.map(domain => findAndScrape(storeName, domain))
   )
 
   const markdownChunks: string[] = []
-  const needsSearch: typeof COUPON_SITES = []
-
-  COUPON_SITES.forEach((site, i) => {
-    const r = directResults[i]
+  results.forEach((r, i) => {
     const md = r.status === 'fulfilled' ? r.value : ''
-    if (md.length > 500) {
-      markdownChunks.push(`[${site.domain}]\n${md.slice(0, 2500)}`)
-    } else {
-      needsSearch.push(site)
+    if (md.length > 400) {
+      markdownChunks.push(`[source: ${TARGET_DOMAINS[i]}]\n${md.slice(0, 2500)}`)
     }
   })
-
-  // Step 2 — for sites where direct URL gave no content, use Firecrawl Search
-  if (needsSearch.length > 0) {
-    const searchResults = await Promise.allSettled(
-      needsSearch.map(site => firecrawlSearchWithContent(storeName, site.domain))
-    )
-    searchResults.forEach((r, i) => {
-      if (r.status === 'fulfilled' && r.value.length > 300) {
-        markdownChunks.push(`[${needsSearch[i].domain}]\n${r.value.slice(0, 2500)}`)
-      }
-    })
-  }
 
   if (markdownChunks.length === 0) return []
 
