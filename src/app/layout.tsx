@@ -34,7 +34,7 @@ export const viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const hdrs = await headers()
   const pathname = hdrs.get('x-pathname') ?? ''
-  const bare = pathname === '/fr/coupon-reveal'
+  const bare = pathname === '/fr/coupon-reveal' || pathname.startsWith('/admin')
 
   return (
     <html lang="fr" translate="no" className={`${inter.variable} ${jetbrains.variable}`}>
