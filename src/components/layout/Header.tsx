@@ -1,27 +1,136 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Search, Menu, X, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoNav } from '@/components/Logo'
 
 interface CategoryLink { name: string; slug: string }
 interface TopStore { name: string; slug: string; coupon_count: number }
+interface StoreResult { name: string; slug: string; logo_url: string | null; coupon_count: number }
 
 interface Props {
   categories: CategoryLink[]
   topStores: TopStore[]
 }
 
-export function Header({ categories, topStores }: Props) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const router = useRouter()
+function SearchBar({ className, inputClass, onNavigate }: { className?: string; inputClass?: string; onNavigate?: () => void }) {
+  const [query, setQuery]         = useState('')
+  const [results, setResults]     = useState<StoreResult[]>([])
+  const [open, setOpen]           = useState(false)
+  const [active, setActive]       = useState(-1)
+  const router                    = useRouter()
+  const timer                     = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wrapRef                   = useRef<HTMLDivElement>(null)
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (query.trim()) router.push(`/recherche?q=${encodeURIComponent(query.trim())}`)
+  const search = useCallback((q: string) => {
+    if (timer.current) clearTimeout(timer.current)
+    if (q.length < 1) { setResults([]); setOpen(false); return }
+    timer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/store-search?q=${encodeURIComponent(q)}`)
+        const data: StoreResult[] = await res.json()
+        setResults(data)
+        setOpen(data.length > 0)
+        setActive(-1)
+      } catch { /* ignore */ }
+    }, 180)
+  }, [])
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setQuery(e.target.value)
+    search(e.target.value)
   }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setOpen(false)
+    if (active >= 0 && results[active]) {
+      router.push(`/store/${results[active].slug}/`)
+      setQuery('')
+    } else if (query.trim()) {
+      router.push(`/recherche?q=${encodeURIComponent(query.trim())}`)
+    }
+    onNavigate?.()
+  }
+
+  function pickStore(slug: string) {
+    setOpen(false)
+    setQuery('')
+    router.push(`/store/${slug}/`)
+    onNavigate?.()
+  }
+
+  function handleKey(e: React.KeyboardEvent) {
+    if (!open) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(a => Math.min(a + 1, results.length - 1)) }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(a => Math.max(a - 1, -1)) }
+    if (e.key === 'Escape')    { setOpen(false); setActive(-1) }
+  }
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={wrapRef} className={`relative ${className ?? ''}`}>
+      <form onSubmit={handleSubmit} className="flex items-center bg-white/5 border border-white/10 rounded-full overflow-visible focus-within:border-primary/40 transition-colors">
+        <Search className="h-4 w-4 text-white/40 ml-4 shrink-0" />
+        <input
+          value={query}
+          onChange={handleChange}
+          onKeyDown={handleKey}
+          onFocus={() => query && results.length && setOpen(true)}
+          placeholder="Rechercher une boutique..."
+          autoComplete="off"
+          className={`bg-transparent text-white placeholder-white/30 px-3 py-2 text-sm flex-1 outline-none ${inputClass ?? ''}`}
+        />
+      </form>
+
+      {/* Dropdown */}
+      {open && results.length > 0 && (
+        <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-[#0d1e35] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[200]">
+          {results.map((store, i) => (
+            <button
+              key={store.slug}
+              onMouseDown={e => { e.preventDefault(); pickStore(store.slug) }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${i === active ? 'bg-primary/15' : 'hover:bg-white/5'}`}
+            >
+              {store.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={store.logo_url} alt="" className="w-7 h-7 object-contain rounded bg-white/10 p-0.5 shrink-0" />
+              ) : (
+                <span className="w-7 h-7 rounded bg-primary/20 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                  {store.name[0].toUpperCase()}
+                </span>
+              )}
+              <span className="flex-1 text-sm text-white font-medium truncate">{store.name}</span>
+              {store.coupon_count > 0 && (
+                <span className="text-[10px] text-primary/70 shrink-0">{store.coupon_count} codes</span>
+              )}
+            </button>
+          ))}
+          <div className="border-t border-white/5 px-4 py-2">
+            <button
+              onMouseDown={e => { e.preventDefault(); handleSubmit(e as unknown as React.FormEvent) }}
+              className="text-xs text-white/40 hover:text-primary transition-colors"
+            >
+              Voir tous les résultats pour &ldquo;{query}&rdquo; →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function Header({ categories, topStores }: Props) {
+  const [open, setOpen] = useState(false)
 
   return (
     <header className="bg-navy/85 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-50">
@@ -70,16 +179,8 @@ export function Header({ categories, topStores }: Props) {
             </nav>
           </div>
 
-          {/* Search bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex items-center bg-white/5 border border-white/10 rounded-full overflow-hidden w-64 focus-within:border-primary/40 transition-colors">
-            <Search className="h-4 w-4 text-white/40 ml-4 shrink-0" />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Rechercher..."
-              className="bg-transparent text-white placeholder-white/30 px-3 py-2 text-sm flex-1 outline-none"
-            />
-          </form>
+          {/* Desktop search with dropdown */}
+          <SearchBar className="hidden md:block w-72" />
 
           {/* Mobile menu button */}
           <button onClick={() => setOpen(!open)} className="md:hidden p-2 text-white">
@@ -90,15 +191,7 @@ export function Header({ categories, topStores }: Props) {
         {/* Mobile menu */}
         {open && (
           <div className="md:hidden pb-4 space-y-3">
-            <form onSubmit={handleSearch} className="flex items-center bg-white/5 border border-white/10 rounded-full overflow-hidden">
-              <Search className="h-4 w-4 text-white/40 ml-4 shrink-0" />
-              <input
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="Rechercher une boutique..."
-                className="bg-transparent text-white placeholder-white/30 px-3 py-2 text-sm flex-1 outline-none"
-              />
-            </form>
+            <SearchBar onNavigate={() => setOpen(false)} />
             <div className="flex flex-col gap-2 text-sm text-white/70">
               <Link href="/all-stores/" onClick={() => setOpen(false)} className="py-2 hover:text-primary">Boutiques</Link>
               <Link href="/#categories" onClick={() => setOpen(false)} className="py-2 hover:text-primary">Catégories</Link>

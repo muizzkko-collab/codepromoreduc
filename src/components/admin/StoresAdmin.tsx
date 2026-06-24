@@ -2,7 +2,7 @@
 import { useState, useMemo, useRef, useTransition, useEffect } from 'react'
 import { useLang } from './LangContext'
 import { StoreLogo } from '@/components/StoreLogo'
-import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link, RefreshCw, ExternalLink } from 'lucide-react'
 import { upsertStore, deleteStore, toggleStoreField, uploadStoreLogo } from '@/app/actions/stores'
 import { updateStore } from '@/app/actions/update-store'
 
@@ -250,6 +250,15 @@ export function StoresAdmin({ initialStores }: Props) {
                 </td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex justify-end gap-1">
+                    <a
+                      href={`/store/${s.slug}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 text-gray-400 hover:text-blue-500 rounded hover:bg-blue-50"
+                      title="View store page"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
                     <button
                       onClick={() => handleUpdate(s)}
                       disabled={updatingId === s.id || isPending}
