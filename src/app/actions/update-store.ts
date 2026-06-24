@@ -111,12 +111,6 @@ async function syncFromNetwork(storeId: string, storeName: string, awinMerchantI
 
 // ── Scraper: Firecrawl + Claude for stores not on any network ────────────────
 
-const COUPON_SITES = [
-  (slug: string) => `https://www.poulpeo.com/boutique/${slug}/`,
-  (slug: string) => `https://www.radins.com/codes-promo/${slug}/`,
-  (slug: string) => `https://www.bonreduction.com/codes-promo-${slug}.html`,
-]
-
 interface ExtractedCoupon {
   title: string
   code: string | null
@@ -125,66 +119,120 @@ interface ExtractedCoupon {
   expiry: string | null
 }
 
+// ── Firecrawl helpers ─────────────────────────────────────────────────────────
+
 async function firecrawlScrape(url: string): Promise<string> {
-  const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ url, formats: ['markdown'] }),
-    signal: AbortSignal.timeout(15000),
-  })
-  if (!res.ok) return ''
-  const json = await res.json()
-  return (json?.data?.markdown as string) ?? ''
+  try {
+    const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, formats: ['markdown'], waitFor: 2000 }),
+      signal: AbortSignal.timeout(20000),
+    })
+    if (!res.ok) return ''
+    const json = await res.json()
+    return (json?.data?.markdown as string | undefined) ?? ''
+  } catch { return '' }
 }
+
+// Use Firecrawl Search to find the exact coupon page URL on a given domain
+async function firecrawlSearch(query: string, limitDomain?: string): Promise<string[]> {
+  try {
+    const searchQuery = limitDomain ? `site:${limitDomain} ${query}` : query
+    const res = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: searchQuery, limit: 3 }),
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return []
+    const json = await res.json()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ((json?.data ?? []) as any[]).map((r: any) => r.url as string).filter(Boolean)
+  } catch { return [] }
+}
+
+// ── The 5 target coupon sites with their known URL patterns ───────────────────
+// Each entry: [domain, urlBuilder]
+const COUPON_SITES: Array<{ domain: string; url: (name: string, slug: string) => string }> = [
+  { domain: 'lareduction.fr',    url: (_n, s) => `https://www.lareduction.fr/boutique/${s}/` },
+  { domain: 'radins.com',        url: (_n, s) => `https://www.radins.com/codes-promo/${s}/` },
+  { domain: 'reduc.fr',          url: (_n, s) => `https://www.reduc.fr/boutique/${s}/` },
+  { domain: 'ma-reduc.com',      url: (_n, s) => `https://www.ma-reduc.com/codes-promo-${s}.html` },
+  { domain: 'ouest-france.fr',   url: (n, _s) => `https://www.ouest-france.fr/bons-plans/code-promo/${encodeURIComponent(n.toLowerCase())}/` },
+]
 
 async function scrapeWithFirecrawlAndClaude(storeName: string, storeSlug: string): Promise<ExtractedCoupon[]> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-  // Try each coupon site until we get content
-  let markdown = ''
-  for (const urlFn of COUPON_SITES) {
-    try {
-      const md = await firecrawlScrape(urlFn(storeSlug))
-      if (md.length > 200) { markdown = md; break }
-    } catch {
-      continue
+  const markdownChunks: string[] = []
+
+  // Step 1 — try direct URL patterns for all 5 sites in parallel
+  const directResults = await Promise.allSettled(
+    COUPON_SITES.map(site => firecrawlScrape(site.url(storeName, storeSlug)))
+  )
+  for (const r of directResults) {
+    if (r.status === 'fulfilled' && r.value.length > 300) {
+      markdownChunks.push(r.value.slice(0, 3000))
     }
   }
 
-  // Fallback: search on radins.com
-  if (!markdown) {
-    try {
-      const searchUrl = `https://www.radins.com/codes-promo/recherche/?q=${encodeURIComponent(storeName)}`
-      markdown = await firecrawlScrape(searchUrl)
-    } catch {
-      return []
+  // Step 2 — for any site that gave no content, search for the correct URL then scrape it
+  const missedSites = COUPON_SITES.filter((_, i) => {
+    const r = directResults[i]
+    return r.status !== 'fulfilled' || r.value.length <= 300
+  })
+
+  if (missedSites.length > 0 && markdownChunks.length < 3) {
+    const searchQuery = `${storeName} code promo réduction`
+    const searchResults = await Promise.allSettled(
+      missedSites.map(site => firecrawlSearch(searchQuery, site.domain))
+    )
+    const foundUrls: string[] = []
+    for (const r of searchResults) {
+      if (r.status === 'fulfilled') foundUrls.push(...r.value.slice(0, 1))
+    }
+
+    // Scrape the found URLs (up to 4)
+    const scraped = await Promise.allSettled(
+      foundUrls.slice(0, 4).map(url => firecrawlScrape(url))
+    )
+    for (const r of scraped) {
+      if (r.status === 'fulfilled' && r.value.length > 300) {
+        markdownChunks.push(r.value.slice(0, 2000))
+      }
     }
   }
 
-  if (!markdown) return []
+  if (markdownChunks.length === 0) return []
 
-  // Ask Claude to extract structured coupon data from the markdown
+  const combinedContent = markdownChunks.join('\n\n---\n\n').slice(0, 8000)
+
+  // Step 3 — Claude extracts structured coupons from all the combined content
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
+    max_tokens: 1500,
     messages: [{
       role: 'user',
-      content: `Extract all coupon codes and deals for the store "${storeName}" from this page content. Return a JSON array only, no explanation.
+      content: `You are a coupon extraction assistant. Extract ALL valid coupon codes and deals for the store "${storeName}" from the following French coupon website content.
 
-Each item must have:
-- title: string (short description of the offer)
-- code: string or null (the promo code if present)
-- discount: string or null (e.g. "20%", "5€", "Livraison gratuite")
-- type: "code" | "deal" | "shipping"
-- expiry: string or null (date in YYYY-MM-DD format if found, else null)
+Return ONLY a JSON array with no explanation. Each item must have:
+- "title": string — clear description of the offer in French (e.g. "20% de réduction sur tout le site")
+- "code": string or null — the exact promo code if present (uppercase), null if no code
+- "discount": string or null — the discount amount (e.g. "20%", "10€", "Livraison gratuite")
+- "type": "code" if there is a promo code, "shipping" if free delivery, "deal" otherwise
+- "expiry": string or null — expiry date as YYYY-MM-DD if found, otherwise null
 
-Page content:
-${markdown.slice(0, 6000)}
+Rules:
+- Skip duplicates (same code or very similar title)
+- Skip expired offers if you can tell from the date
+- Include deals even without a code
+- Max 20 results
 
-Return only valid JSON array, nothing else.`,
+Content from French coupon sites:
+${combinedContent}
+
+Return only a valid JSON array, nothing else.`,
     }],
   })
 
