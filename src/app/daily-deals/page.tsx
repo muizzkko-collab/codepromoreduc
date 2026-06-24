@@ -5,6 +5,7 @@ import { getDailyDeals, getDailyStores } from "@/app/actions/deals"
 import { getBlogPosts } from "@/app/actions/blog"
 import { ExtensionPromo } from "@/components/ExtensionPromo"
 import { CouponRevealButton } from "@/components/CouponRevealButton"
+import { BannerCarousel } from "@/components/BannerCarousel"
 import { createClient } from "@/lib/supabase/server"
 import type { Coupon, Store } from "@/lib/types"
 import { ChevronRight, Tag, Store as StoreIcon, Zap, Clock } from "lucide-react"
@@ -67,7 +68,7 @@ export default async function DailyDealsPage() {
   const [dealsRes, storesRes, blogRes, topStoresRes, bannerStoresRes] = await Promise.all([
     getDailyDeals(), getDailyStores(), getBlogPosts(true),
     supabase.from("stores").select("id,name,slug,logo_url,coupon_count").eq("is_active", true).order("coupon_count", { ascending: false }).limit(8),
-    supabase.from("stores").select("id,name,slug,logo_url,popup_banner_url,affiliate_url,coupon_count").eq("is_active", true).eq("show_on_daily", true).limit(6),
+    supabase.from("stores").select("id,name,slug,logo_url,popup_banner_url,affiliate_url,coupon_count").eq("is_active", true).eq("show_on_daily", true).limit(30),
   ])
 
   type CouponWithStore = Coupon & { store: Store & { affiliate_url?: string | null } }
@@ -88,6 +89,16 @@ export default async function DailyDealsPage() {
         .order("is_featured", { ascending: false }).limit(1).maybeSingle()
     )
   )
+
+  const bannerItems = bannerStores.map((s, i) => {
+    const best = bannerCoupons[i]?.data
+    return {
+      id: s.id, name: s.name, slug: s.slug,
+      logo_url: s.logo_url, popup_banner_url: s.popup_banner_url, affiliate_url: s.affiliate_url,
+      bestTitle: best?.title ?? null,
+      bestDiscount: best ? extractDiscount(best.discount_value, best.title, "deal") : null,
+    }
+  })
 
   const blogPosts = (blogRes.data ?? []).slice(0, 3)
 
@@ -147,47 +158,8 @@ export default async function DailyDealsPage() {
             <span style={{ color: "#38bdf8" }}>Offres du Jour</span>
           </nav>
 
-          {/* Store banners */}
-          {bannerStores.length > 0 && (
-            <section style={{ marginBottom: 48 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 20, letterSpacing: "-.02em" }}>Boutiques en Vedette</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(260px,1fr))", gap: 16 }}>
-                {bannerStores.map((store, idx) => {
-                  const best = bannerCoupons[idx]?.data
-                  const storeUrl = store.affiliate_url?.trim() || `${getSiteUrl()}/store/${store.slug}/`
-                  const bestDiscount = best ? extractDiscount(best.discount_value, best.title, "deal") : null
-                  return (
-                    <div key={store.id} className="d-banner-card" style={{ position: "relative", borderRadius: 18, overflow: "hidden",
-                      background: store.popup_banner_url ? `url(${store.popup_banner_url}) center/cover` : "linear-gradient(135deg,#0d1e35,#0a2a4a)",
-                      border: "1px solid rgba(255,255,255,.1)", minHeight: 180 }}>
-                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom,rgba(4,6,18,.25),rgba(4,6,18,.9))" }} />
-                      <div style={{ position: "relative", zIndex: 1, padding: 20, display: "flex", flexDirection: "column", minHeight: 180, boxSizing: "border-box" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                          {store.logo_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={store.logo_url} alt={store.name} style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 8, background: "rgba(255,255,255,.12)", padding: 4 }} />
-                          ) : (
-                            <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(56,189,248,.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 900, color: "#38bdf8" }}>{store.name[0]}</div>
-                          )}
-                          <span style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{store.name}</span>
-                        </div>
-                        {best && (
-                          <div style={{ marginBottom: 14, flex: 1 }}>
-                            {bestDiscount && <div style={{ display: "inline-block", background: "rgba(56,189,248,.25)", border: "1px solid rgba(56,189,248,.5)", color: "#38bdf8", fontSize: 13, fontWeight: 900, borderRadius: 8, padding: "3px 10px", marginBottom: 6 }}>{bestDiscount}</div>}
-                            <p style={{ fontSize: 13, color: "rgba(255,255,255,.85)", lineHeight: 1.4 }}>{best.title}</p>
-                          </div>
-                        )}
-                        <a href={storeUrl} target="_blank" rel="noopener noreferrer sponsored" className="d-banner-btn"
-                          style={{ display: "block", textAlign: "center", background: "linear-gradient(90deg,#38bdf8,#818cf8)", color: "#fff", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 800, textDecoration: "none" }}>
-                          Voir les offres &#8594;
-                        </a>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          )}
+          {/* Store banners carousel */}
+          <BannerCarousel banners={bannerItems} siteUrl={getSiteUrl()} />
 
           {/* Store grid */}
           {stores.length > 0 && (
