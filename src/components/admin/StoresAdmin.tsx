@@ -1,5 +1,6 @@
 'use client'
 import { useState, useMemo, useRef, useTransition, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useLang } from './LangContext'
 import { StoreLogo } from '@/components/StoreLogo'
 import { Plus, Pencil, Trash2, X, Search, ChevronLeft, ChevronRight, Link, RefreshCw, ExternalLink } from 'lucide-react'
@@ -48,8 +49,12 @@ export function StoresAdmin({ initialStores }: Props) {
   const [dropdownResults, setDropdownResults] = useState<{ name: string; slug: string; logo_url: string | null; coupon_count: number }[]>([])
   const [dropdownOpen, setDropdownOpen]       = useState(false)
   const [dropdownActive, setDropdownActive]   = useState(-1)
+  const [dropPos, setDropPos]                 = useState<{ top: number; left: number; width: number } | null>(null)
+  const [mounted, setMounted]                 = useState(false)
   const searchWrapRef                         = useRef<HTMLDivElement>(null)
   const searchTimerRef                        = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => { setMounted(true) }, [])
 
   // Awin search state (for new stores)
   const [awinQuery, setAwinQuery]       = useState('')
@@ -108,6 +113,12 @@ export function StoresAdmin({ initialStores }: Props) {
 
   function handleSearch(q: string) { setSearch(q); setPage(0) }
 
+  const updateDropPos = useCallback(() => {
+    if (!searchWrapRef.current) return
+    const r = searchWrapRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX, width: r.width })
+  }, [])
+
   const fetchDropdown = useCallback((q: string) => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     if (q.length < 1) { setDropdownResults([]); setDropdownOpen(false); return }
@@ -116,11 +127,11 @@ export function StoresAdmin({ initialStores }: Props) {
         const res = await fetch(`/api/store-search?q=${encodeURIComponent(q)}`)
         const data = await res.json()
         setDropdownResults(data)
-        setDropdownOpen(data.length > 0)
+        if (data.length > 0) { updateDropPos(); setDropdownOpen(true) } else { setDropdownOpen(false) }
         setDropdownActive(-1)
       } catch { /* ignore */ }
     }, 180)
-  }, [])
+  }, [updateDropPos])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -253,43 +264,48 @@ export function StoresAdmin({ initialStores }: Props) {
 
       {/* Search with dropdown */}
       <div ref={searchWrapRef} className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           value={search}
           onChange={e => handleSearchInput(e.target.value)}
           onKeyDown={handleSearchKey}
-          onFocus={() => search && dropdownResults.length && setDropdownOpen(true)}
+          onFocus={() => { if (search && dropdownResults.length) { updateDropPos(); setDropdownOpen(true) } }}
           placeholder={tr.search}
           autoComplete="off"
           className="w-full border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
         />
-        {/* Dropdown */}
-        {dropdownOpen && dropdownResults.length > 0 && (
-          <div className="absolute top-[calc(100%+4px)] left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50">
-            {dropdownResults.map((s, i) => (
-              <button
-                key={s.slug}
-                onMouseDown={e => { e.preventDefault(); pickDropdownStore(s.slug) }}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${i === dropdownActive ? 'bg-primary/10' : 'hover:bg-gray-50'}`}
-              >
-                {s.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.logo_url} alt="" className="w-7 h-7 object-contain rounded border border-gray-100 p-0.5 shrink-0 bg-white" />
-                ) : (
-                  <span className="w-7 h-7 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                    {s.name[0].toUpperCase()}
-                  </span>
-                )}
-                <span className="flex-1 font-medium text-gray-800 truncate">{s.name}</span>
-                <span className="text-xs text-gray-400 shrink-0">{s.coupon_count} codes</span>
-              </button>
-            ))}
-            <div className="border-t border-gray-100 px-3 py-1.5">
-              <span className="text-xs text-gray-400">↵ ouvre les détails · Échap ferme</span>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Dropdown portal — renders on document.body to escape overflow-auto containers */}
+      {mounted && dropdownOpen && dropdownResults.length > 0 && dropPos && createPortal(
+        <div
+          style={{ position: 'absolute', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+          className="bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+        >
+          {dropdownResults.map((s, i) => (
+            <button
+              key={s.slug}
+              onMouseDown={e => { e.preventDefault(); pickDropdownStore(s.slug) }}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${i === dropdownActive ? 'bg-primary/10' : 'hover:bg-gray-50'}`}
+            >
+              {s.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={s.logo_url} alt="" className="w-7 h-7 object-contain rounded border border-gray-100 p-0.5 shrink-0 bg-white" />
+              ) : (
+                <span className="w-7 h-7 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                  {s.name[0].toUpperCase()}
+                </span>
+              )}
+              <span className="flex-1 font-medium text-gray-800 truncate">{s.name}</span>
+              <span className="text-xs text-gray-400 shrink-0">{s.coupon_count} codes</span>
+            </button>
+          ))}
+          <div className="border-t border-gray-100 px-3 py-1.5">
+            <span className="text-xs text-gray-400">↵ ouvre les détails · Échap ferme</span>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Count */}
       <p className="text-xs text-gray-400 mb-2">

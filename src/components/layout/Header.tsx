@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, Menu, X, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoNav } from '@/components/Logo'
@@ -14,14 +15,24 @@ interface Props {
   topStores: TopStore[]
 }
 
-function SearchBar({ className, inputClass, onNavigate }: { className?: string; inputClass?: string; onNavigate?: () => void }) {
-  const [query, setQuery]         = useState('')
-  const [results, setResults]     = useState<StoreResult[]>([])
-  const [open, setOpen]           = useState(false)
-  const [active, setActive]       = useState(-1)
-  const router                    = useRouter()
-  const timer                     = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const wrapRef                   = useRef<HTMLDivElement>(null)
+function SearchBar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
+  const [query, setQuery]     = useState('')
+  const [results, setResults] = useState<StoreResult[]>([])
+  const [open, setOpen]       = useState(false)
+  const [active, setActive]   = useState(-1)
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null)
+  const router                = useRouter()
+  const timer                 = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wrapRef               = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  const updatePos = useCallback(() => {
+    if (!wrapRef.current) return
+    const r = wrapRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + window.scrollY + 6, left: r.left + window.scrollX, width: r.width })
+  }, [])
 
   const search = useCallback((q: string) => {
     if (timer.current) clearTimeout(timer.current)
@@ -31,11 +42,11 @@ function SearchBar({ className, inputClass, onNavigate }: { className?: string; 
         const res = await fetch(`/api/store-search?q=${encodeURIComponent(q)}`)
         const data: StoreResult[] = await res.json()
         setResults(data)
-        setOpen(data.length > 0)
+        if (data.length > 0) { updatePos(); setOpen(true) } else { setOpen(false) }
         setActive(-1)
       } catch { /* ignore */ }
     }, 180)
-  }, [])
+  }, [updatePos])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
@@ -68,7 +79,6 @@ function SearchBar({ className, inputClass, onNavigate }: { className?: string; 
     if (e.key === 'Escape')    { setOpen(false); setActive(-1) }
   }
 
-  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
@@ -77,54 +87,58 @@ function SearchBar({ className, inputClass, onNavigate }: { className?: string; 
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const dropdown = mounted && open && results.length > 0 && dropPos ? createPortal(
+    <div
+      style={{ position: 'absolute', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999 }}
+      className="bg-[#0d1e35] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+    >
+      {results.map((store, i) => (
+        <button
+          key={store.slug}
+          onMouseDown={e => { e.preventDefault(); pickStore(store.slug) }}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${i === active ? 'bg-white/10' : 'hover:bg-white/5'}`}
+        >
+          {store.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={store.logo_url} alt="" className="w-7 h-7 object-contain rounded bg-white/10 p-0.5 shrink-0" />
+          ) : (
+            <span className="w-7 h-7 rounded bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center shrink-0">
+              {store.name[0].toUpperCase()}
+            </span>
+          )}
+          <span className="flex-1 text-sm text-white font-medium truncate">{store.name}</span>
+          {store.coupon_count > 0 && (
+            <span className="text-[10px] text-sky-400/70 shrink-0">{store.coupon_count} codes</span>
+          )}
+        </button>
+      ))}
+      <div className="border-t border-white/5 px-4 py-2">
+        <button
+          onMouseDown={e => { e.preventDefault(); handleSubmit(e as unknown as React.FormEvent) }}
+          className="text-xs text-white/40 hover:text-sky-400 transition-colors"
+        >
+          Voir tous les résultats pour &ldquo;{query}&rdquo; →
+        </button>
+      </div>
+    </div>,
+    document.body
+  ) : null
+
   return (
     <div ref={wrapRef} className={`relative ${className ?? ''}`}>
-      <form onSubmit={handleSubmit} className="flex items-center bg-white/5 border border-white/10 rounded-full overflow-visible focus-within:border-primary/40 transition-colors">
+      <form onSubmit={handleSubmit} className="flex items-center bg-white/5 border border-white/10 rounded-full focus-within:border-sky-400/40 transition-colors" style={{ overflow: 'visible' }}>
         <Search className="h-4 w-4 text-white/40 ml-4 shrink-0" />
         <input
           value={query}
           onChange={handleChange}
           onKeyDown={handleKey}
-          onFocus={() => query && results.length && setOpen(true)}
+          onFocus={() => { if (query && results.length) { updatePos(); setOpen(true) } }}
           placeholder="Rechercher une boutique..."
           autoComplete="off"
-          className={`bg-transparent text-white placeholder-white/30 px-3 py-2 text-sm flex-1 outline-none ${inputClass ?? ''}`}
+          className="bg-transparent text-white placeholder-white/30 px-3 py-2 text-sm flex-1 outline-none"
         />
       </form>
-
-      {/* Dropdown */}
-      {open && results.length > 0 && (
-        <div className="absolute top-[calc(100%+6px)] left-0 right-0 bg-[#0d1e35] border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[200]">
-          {results.map((store, i) => (
-            <button
-              key={store.slug}
-              onMouseDown={e => { e.preventDefault(); pickStore(store.slug) }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${i === active ? 'bg-primary/15' : 'hover:bg-white/5'}`}
-            >
-              {store.logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={store.logo_url} alt="" className="w-7 h-7 object-contain rounded bg-white/10 p-0.5 shrink-0" />
-              ) : (
-                <span className="w-7 h-7 rounded bg-primary/20 text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                  {store.name[0].toUpperCase()}
-                </span>
-              )}
-              <span className="flex-1 text-sm text-white font-medium truncate">{store.name}</span>
-              {store.coupon_count > 0 && (
-                <span className="text-[10px] text-primary/70 shrink-0">{store.coupon_count} codes</span>
-              )}
-            </button>
-          ))}
-          <div className="border-t border-white/5 px-4 py-2">
-            <button
-              onMouseDown={e => { e.preventDefault(); handleSubmit(e as unknown as React.FormEvent) }}
-              className="text-xs text-white/40 hover:text-primary transition-colors"
-            >
-              Voir tous les résultats pour &ldquo;{query}&rdquo; →
-            </button>
-          </div>
-        </div>
-      )}
+      {dropdown}
     </div>
   )
 }
@@ -179,7 +193,7 @@ export function Header({ categories, topStores }: Props) {
             </nav>
           </div>
 
-          {/* Desktop search with dropdown */}
+          {/* Desktop search */}
           <SearchBar className="hidden md:block w-72" />
 
           {/* Mobile menu button */}
