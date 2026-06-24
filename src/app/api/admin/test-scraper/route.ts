@@ -1,63 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 
-export const maxDuration = 60
+export const maxDuration = 90
 
 const FC = () => process.env.FIRECRAWL_API_KEY ?? ''
+const TARGET_DOMAINS = ['radins.com', 'reduc.fr', 'ma-reduc.com', 'ouest-france.fr']
 
-async function fcSearch(storeName: string, domain: string) {
-  const res = await fetch('https://api.firecrawl.dev/v1/search', {
+async function findAndScrape(storeName: string, domain: string): Promise<{ url: string; markdownLength: number; md: string }> {
+  const searchRes = await fetch('https://api.firecrawl.dev/v1/search', {
     method: 'POST',
     headers: { Authorization: `Bearer ${FC()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: `"${storeName}" code promo réduction site:${domain}`, limit: 2 }),
+    body: JSON.stringify({ query: `"${storeName}" code promo réduction site:${domain}`, limit: 1 }),
     signal: AbortSignal.timeout(20000),
   })
-  const json = await res.json()
+  const sj = await searchRes.json()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { status: res.status, urls: ((json?.data ?? []) as any[]).map((r: any) => r.url) }
-}
+  const url: string = (sj?.data?.[0] as any)?.url ?? ''
+  if (!url) return { url: '', markdownLength: 0, md: '' }
 
-async function fcScrape(url: string) {
-  const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+  const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
     headers: { Authorization: `Bearer ${FC()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ url, formats: ['markdown'] }),
     signal: AbortSignal.timeout(25000),
   })
-  const json = await res.json()
-  const md: string = json?.data?.markdown ?? ''
-  return { status: res.status, markdownLength: md.length, preview: md.slice(0, 300) }
+  const scrapeJson = await scrapeRes.json()
+  const md: string = scrapeJson?.data?.markdown ?? ''
+  return { url, markdownLength: md.length, md }
 }
 
 export async function GET(request: NextRequest) {
   const storeName = request.nextUrl.searchParams.get('store') ?? 'About You'
-  const domains = ['radins.com', 'reduc.fr', 'ma-reduc.com', 'ouest-france.fr']
 
-  // Step 1: search each domain
-  const searchResults = await Promise.all(domains.map(d => fcSearch(storeName, d).catch(e => ({ status: 0, urls: [], error: String(e) }))))
-
-  // Step 2: scrape first URL found per domain
-  const scrapeResults = await Promise.all(
-    searchResults.map(async (sr, i) => {
-      const url = sr.urls?.[0]
-      if (!url) return { domain: domains[i], url: null, markdownLength: 0, preview: '' }
-      const scraped = await fcScrape(url).catch(() => ({ status: 0, markdownLength: 0, preview: '' }))
-      return { domain: domains[i], url, ...scraped }
-    })
+  const results = await Promise.all(
+    TARGET_DOMAINS.map(d => findAndScrape(storeName, d).catch(e => ({ url: '', markdownLength: 0, md: '', error: String(e) })))
   )
 
-  // Step 3: run Claude on combined content
-  const combined = scrapeResults.filter(r => r.markdownLength > 400).map(r => `[${r.domain}]\n${r.preview}`).join('\n---\n')
-  let claudeOutput = 'no content to send to Claude'
-  if (combined) {
+  const chunks = results.map((r, i) => {
+    const content = r.md.length > 500 ? r.md.slice(500, 5500) : r.md.slice(0, 5000)
+    return { domain: TARGET_DOMAINS[i], url: r.url, markdownLength: r.markdownLength, contentSent: content.length }
+  })
+
+  const combinedContent = results
+    .map((r, i) => {
+      if (r.markdownLength < 400) return null
+      const c = r.md.length > 500 ? r.md.slice(500, 5500) : r.md.slice(0, 5000)
+      return `[source: ${TARGET_DOMAINS[i]}]\n${c}`
+    })
+    .filter(Boolean)
+    .join('\n\n---\n\n')
+    .slice(0, 14000)
+
+  let claudeOutput = 'no content'
+  let claudeRaw = ''
+  if (combinedContent) {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const msg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
-      messages: [{ role: 'user', content: `Extract coupon codes for "${storeName}" from this content. Return JSON array with title, code, type fields.\n\n${combined.slice(0, 4000)}` }],
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: `Extract ALL coupon codes and deals for "${storeName}" from this French coupon site content. Return ONLY a JSON array.\n\nEach item: {"title": string, "code": string|null, "discount": string|null, "type": "code"|"deal"|"shipping", "expiry": string|null}\n\nContent:\n${combinedContent}`,
+      }],
     })
-    claudeOutput = msg.content[0].type === 'text' ? msg.content[0].text : 'no text'
+    claudeRaw = msg.content[0].type === 'text' ? msg.content[0].text : ''
+    claudeOutput = claudeRaw.slice(0, 2000)
   }
 
-  return NextResponse.json({ storeName, searchResults: searchResults.map((r, i) => ({ domain: domains[i], ...r })), scrapeResults, claudeOutput })
+  return NextResponse.json({ storeName, chunks, totalContentLength: combinedContent.length, claudeOutput })
 }
