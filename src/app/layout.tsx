@@ -4,6 +4,8 @@ import { headers } from 'next/headers'
 import './globals.css'
 import { HeaderServer } from '@/components/layout/HeaderServer'
 import { Footer } from '@/components/layout/Footer'
+import { BottomNav } from '@/components/pwa/BottomNav'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { getSiteUrl } from '@/lib/utils'
 
 const inter     = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -22,6 +24,12 @@ export const metadata: Metadata = {
     locale: 'fr_FR',
     type: 'website',
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'CodePromo',
+  },
 }
 
 export const viewport = {
@@ -29,6 +37,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: 'cover' as const,
+  themeColor: '#38bdf8',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +49,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="fr" translate="no" className={`${inter.variable} ${jetbrains.variable}`}>
       <head>
         <meta name="google" content="notranslate" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="font-sans bg-navy text-white antialiased flex flex-col min-h-screen" suppressHydrationWarning>
         {!bare && (
@@ -53,8 +65,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <HeaderServer />
           </>
         )}
-        <main className={bare ? '' : 'flex-1 relative z-[1]'}>{children}</main>
-        {!bare && <Footer />}
+        <main className={bare ? '' : 'flex-1 relative z-[1] pb-safe'}>{children}</main>
+        {!bare && (
+          <>
+            <Footer />
+            <BottomNav />
+            <InstallPrompt />
+          </>
+        )}
       </body>
     </html>
   )
