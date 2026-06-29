@@ -1,4 +1,3 @@
-'use server'
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient }         from '@/lib/supabase/admin'
 import { syncAllNetworks }           from '@/lib/sync-orchestrator'

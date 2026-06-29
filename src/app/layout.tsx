@@ -8,8 +8,8 @@ import { BottomNav } from '@/components/pwa/BottomNav'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { getSiteUrl } from '@/lib/utils'
 
-const inter     = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' })
+const inter     = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap', preload: false })
 
 export const metadata: Metadata = {
   title: {
