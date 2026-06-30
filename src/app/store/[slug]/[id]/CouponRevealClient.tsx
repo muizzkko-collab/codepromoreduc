@@ -33,8 +33,7 @@ export function CouponRevealClient({
   }, [])
 
   const closePopup = useCallback(() => {
-    if (window.opener) { window.close() }
-    else { window.location.href = `/store/${storeSlug}/` }
+    window.location.href = `/store/${storeSlug}/`
   }, [storeSlug])
 
   const handleCopyAndGo = useCallback(() => {
