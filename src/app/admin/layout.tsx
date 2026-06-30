@@ -1,6 +1,7 @@
 import { LangProvider } from '@/components/admin/LangContext'
 import { PermissionsProvider } from '@/components/admin/PermissionsContext'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { SessionGuard } from '@/components/admin/SessionGuard'
 import { getCurrentAdminProfile } from '@/lib/admin-auth'
 import type { Metadata } from 'next'
 
@@ -21,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             {children}
           </main>
         </div>
+        <SessionGuard />
       </PermissionsProvider>
     </LangProvider>
   )

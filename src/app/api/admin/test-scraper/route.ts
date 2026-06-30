@@ -29,7 +29,12 @@ async function findAndScrape(storeName: string, domain: string): Promise<{ url: 
   return { url, markdownLength: md.length, md }
 }
 
+import { verifyAdminRequest, unauthorizedResponse } from '@/lib/security/verify-admin'
+
 export async function GET(request: NextRequest) {
+  const { authorized } = await verifyAdminRequest()
+  if (!authorized) return unauthorizedResponse()
+
   const storeName = request.nextUrl.searchParams.get('store') ?? 'About You'
 
   const results = await Promise.all(

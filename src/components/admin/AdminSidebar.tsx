@@ -6,7 +6,7 @@ import { useLang } from './LangContext'
 import { usePermissions } from './PermissionsContext'
 import {
   LayoutDashboard, Store, Tag, FolderOpen, Flag,
-  RefreshCw, PlusCircle, LogOut, Globe, ChevronRight, Users, Image as ImageIcon, FileText, BookOpen, Smartphone,
+  RefreshCw, PlusCircle, LogOut, Globe, ChevronRight, Users, Image as ImageIcon, FileText, BookOpen, Smartphone, ShieldCheck,
 } from 'lucide-react'
 import { LogoIcon } from '@/components/Logo'
 import type { Permission } from '@/lib/admin-auth'
@@ -23,6 +23,7 @@ const navItems = (tr: ReturnType<typeof useLang>['tr']): { href: string; icon: t
   { href: '/admin/contenu-seo/',             icon: FileText,        label: tr.seoContent,  perm: 'site_content' },
   { href: '/admin/blog/',                    icon: BookOpen,        label: 'Blog',         perm: 'site_content' },
   { href: '/admin/pwa/',                     icon: Smartphone,      label: 'PWA & Push',   perm: 'site_content' },
+  { href: '/admin/securite/',                icon: ShieldCheck,     label: 'Sécurité',     perm: 'users' },
   { href: '/admin/utilisateurs/',            icon: Users,           label: tr.users,       perm: 'users' },
 ]
 

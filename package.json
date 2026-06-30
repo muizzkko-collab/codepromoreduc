@@ -11,14 +11,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
     "@base-ui/react": "^1.5.0",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "@types/web-push": "^3.6.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.18.0",
-    "next": "14.2.35",
-    "next-pwa": "^5.6.0",
+    "next": "15.5.19",
     "react": "^18",
     "react-dom": "^18",
     "shadcn": "^4.11.0",
@@ -31,9 +31,16 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.2.35",
-    "postcss": "^8",
+    "eslint-config-next": "15.5.19",
+    "postcss": "^8.5.10",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.6",
+    "glob": "^10.4.5",
+    "next": {
+      "postcss": "^8.5.10"
+    }
   }
 }

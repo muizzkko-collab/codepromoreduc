@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse }  from 'next/server'
 import { createAdminClient }          from '@/lib/supabase/admin'
+import { verifyAdminRequest, unauthorizedResponse } from '@/lib/security/verify-admin'
 import { gatherStoreFacts, assignTier } from '@/lib/seo/gather-store-facts'
 import { generateContent, resolveInternalLinks, checkSimilarity } from '@/lib/seo/generate-content'
 
@@ -98,10 +99,11 @@ async function processConcurrent<T>(
 }
 
 export async function POST(req: NextRequest) {
-  // Auth check
-  const auth = req.headers.get('authorization')
-  const isAdmin = req.headers.get('x-admin-request') === '1'
-  if (auth !== `Bearer ${process.env.CRON_SECRET}` && !isAdmin) {
+  // Auth check — either cron secret or valid admin session
+  const auth    = req.headers.get('authorization')
+  const isCron  = auth === `Bearer ${process.env.CRON_SECRET}`
+  const { authorized: isAdmin } = isCron ? { authorized: true } : await verifyAdminRequest()
+  if (!isCron && !isAdmin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

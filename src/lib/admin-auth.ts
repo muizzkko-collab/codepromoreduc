@@ -36,8 +36,8 @@ export async function getCurrentAdminProfile(): Promise<AdminProfile | null> {
   const admin = createAdminClient()
   const { data } = await admin.from('admin_profiles').select('*').eq('id', user.id).single()
 
-  // No profile row yet → no permissions granted (fail closed, not open)
-  if (!data) return { id: user.id, email: user.email ?? '', permissions: {} }
+  // No profile row, or account deactivated → fail closed
+  if (!data || data.is_active === false) return null
 
   return { id: data.id, email: data.email, permissions: data.permissions ?? {} }
 }

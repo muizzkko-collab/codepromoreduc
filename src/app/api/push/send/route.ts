@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { verifyAdminRequest } from '@/lib/security/verify-admin'
 
 webpush.setVapidDetails(
   `mailto:${process.env.VAPID_EMAIL}`,
@@ -16,10 +17,12 @@ function isParisSilentHours(): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  // Require CRON_SECRET auth
-  const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Allow either: cron secret (automated) or valid admin session (UI)
+  const auth   = req.headers.get('authorization')
+  const isCron = auth === `Bearer ${process.env.CRON_SECRET}`
+  if (!isCron) {
+    const { authorized } = await verifyAdminRequest()
+    if (!authorized) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   if (isParisSilentHours()) {
