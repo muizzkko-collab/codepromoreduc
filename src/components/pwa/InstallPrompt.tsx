@@ -12,23 +12,21 @@ export function InstallPrompt() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    // Don't show if already installed (standalone mode)
+    // Desktop: never show
+    if (!window.matchMedia('(max-width: 767px)').matches) return
+    // Already installed
     if (window.matchMedia('(display-mode: standalone)').matches) return
-    // Don't show if dismissed within last 7 days
+    // Dismissed within last 7 days
     const dismissed = localStorage.getItem('pwa-install-dismissed')
     if (dismissed && Date.now() - Number(dismissed) < 7 * 86400000) return
 
-    // Track visits
     const visits = Number(localStorage.getItem('pwa-visit-count') ?? 0) + 1
     localStorage.setItem('pwa-visit-count', String(visits))
 
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Show after 2nd visit
-      if (visits >= 2) {
-        setTimeout(() => setVisible(true), 3000)
-      }
+      if (visits >= 2) setTimeout(() => setVisible(true), 3000)
     }
 
     window.addEventListener('beforeinstallprompt', handler)

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Store, Coupon } from '@/lib/types'
 import { getCurrentMonthYear } from '@/lib/utils'
 import { CouponRevealButton } from '@/components/CouponRevealButton'
+import { StoreInstallBanner } from '@/components/pwa/StoreInstallBanner'
 import type { SidebarBanner } from '@/app/actions/site-content'
 
 interface SimilarCoupon {
@@ -670,6 +671,9 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners
         </div>
 
       </div>
+
+      {/* Mobile-only PWA install banner */}
+      <StoreInstallBanner />
     </>
   )
 }
