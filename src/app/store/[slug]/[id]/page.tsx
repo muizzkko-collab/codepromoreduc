@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { data: coupon } = await supabase
     .from('coupons')
     .select('title, discount_value, store:stores(name, slug)')
-    .eq('public_id', parseInt(id))
+    .eq('wp_post_id', parseInt(id))
     .single()
   if (!coupon) return {}
   const store  = coupon.store as unknown as { name: string; slug: string }
@@ -38,7 +38,7 @@ export default async function CouponRevealPage({ params }: Props) {
   const { data: coupon } = await supabase
     .from('coupons')
     .select('*, store:stores(*)')
-    .eq('public_id', publicId)
+    .eq('wp_post_id', publicId)
     .single()
 
   if (!coupon) notFound()
