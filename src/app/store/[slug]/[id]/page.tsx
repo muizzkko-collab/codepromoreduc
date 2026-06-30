@@ -47,25 +47,6 @@ export default async function CouponRevealPage({ params }: Props) {
   // Canonical slug redirect (e.g. old WordPress URL had different slug)
   if (store.slug !== slug) redirect(`/store/${store.slug}/${id}/`)
 
-  // Fetch similar stores (server-side, no client round-trip)
-  const { data: catData } = await supabase
-    .from('store_categories').select('category_id').eq('store_id', store.id).limit(5)
-  const catIds = (catData ?? []).map(r => r.category_id)
-
-  let similarStores: { name: string; slug: string; logo_url: string | null }[] = []
-  if (catIds.length > 0) {
-    const { data: scData } = await supabase
-      .from('store_categories').select('store_id')
-      .in('category_id', catIds).neq('store_id', store.id).limit(40)
-    const storeIds = [...new Set((scData ?? []).map(r => r.store_id))].slice(0, 20)
-    if (storeIds.length > 0) {
-      const { data: sData } = await supabase
-        .from('stores').select('name, slug, logo_url')
-        .in('id', storeIds).eq('is_active', true).limit(8)
-      similarStores = (sData ?? []) as typeof similarStores
-    }
-  }
-
   const couponTyped  = coupon as unknown as import('@/lib/types').Coupon & { store: import('@/lib/types').Store }
   const affiliateUrl = couponTyped.destination_url || store.affiliate_url || `/store/${slug}/`
 
@@ -106,7 +87,7 @@ export default async function CouponRevealPage({ params }: Props) {
         bannerUrl={store.popup_banner_url ?? null}
         affiliateUrl={affiliateUrl}
         expiryDate={couponTyped.expiry_date ?? null}
-        similarStores={similarStores}
+        similarStores={[]}
       />
     </>
   )

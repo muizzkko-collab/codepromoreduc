@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Copy, CheckCheck, ExternalLink, X, Tag, Sparkles } from 'lucide-react'
 
 interface SimilarStore { name: string; slug: string; logo_url: string | null }
@@ -24,13 +24,25 @@ export function CouponRevealClient({
   affiliateUrl, expiryDate, similarStores,
 }: Props) {
   const hasCode = couponType === 'code' && !!couponCode
-  const [copied,  setCopied]  = useState(false)
-  const [visible, setVisible] = useState(false)
+  const [copied,       setCopied]       = useState(false)
+  const [visible,      setVisible]      = useState(false)
+  const [similar,      setSimilar]      = useState<SimilarStore[]>(similarStores)
+  const fetchedRef = useRef(false)
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 60)
     return () => clearTimeout(t)
   }, [])
+
+  // Fetch similar stores after popup is visible — keeps server render to 1 query
+  useEffect(() => {
+    if (fetchedRef.current || similar.length > 0) return
+    fetchedRef.current = true
+    fetch(`/api/similar-stores?slug=${storeSlug}`)
+      .then(r => r.json())
+      .then((data: SimilarStore[]) => { if (data?.length) setSimilar(data) })
+      .catch(() => {})
+  }, [storeSlug, similar.length])
 
   const closePopup = useCallback(() => {
     window.location.href = `/store/${storeSlug}/`
@@ -286,13 +298,13 @@ export function CouponRevealClient({
           </div>
 
           {/* ── Similar stores section ──────────────────────────────── */}
-          {similarStores.length > 0 && (
+          {similar.length > 0 && (
             <div style={{ borderTop: '1px solid rgba(255,255,255,.06)', padding: '20px 36px 28px' }}>
               <p style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,.35)', textTransform: 'uppercase', letterSpacing: '.18em', marginBottom: 16 }}>
                 Boutiques similaires
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {similarStores.map(s => (
+                {similar.map(s => (
                   <a
                     key={s.slug}
                     href={`/store/${s.slug}/`}
