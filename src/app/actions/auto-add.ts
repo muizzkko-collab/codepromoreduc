@@ -31,11 +31,24 @@ export async function publishStore(params: {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
+  const storeSlug = `code-promo-${slug}`
+
+  // Check if slug already exists
+  const { data: existing } = await supabase
+    .from('stores')
+    .select('id, name, slug')
+    .eq('slug', storeSlug)
+    .maybeSingle()
+
+  if (existing) {
+    return { error: `Une boutique avec ce slug existe déjà : "${existing.name}" (${storeSlug}). Mettez à jour la boutique existante depuis /admin/boutiques/.` }
+  }
+
   const { data: store, error: storeErr } = await supabase
     .from('stores')
     .insert({
       name:                  params.name,
-      slug:                  `code-promo-${slug}`,
+      slug:                  storeSlug,
       logo_url:              params.logoUrl,
       affiliate_url:         params.affiliateUrl,
       meta_description:      params.metaDescription,
