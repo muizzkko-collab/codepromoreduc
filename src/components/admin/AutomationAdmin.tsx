@@ -72,12 +72,12 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
     try {
       const { data, error } = await syncStoreLogos()
       if (error) {
-        setLogoMessage(`Erreur : ${error}`)
+        setLogoMessage(`Error: ${error}`)
       } else if (data) {
-        setLogoMessage(`✓ Logos : ${data.updated} mis à jour, ${data.skipped} inchangés${data.errors ? `, ${data.errors} erreurs` : ''}`)
+        setLogoMessage(`✓ Logos: ${data.updated} updated, ${data.skipped} unchanged${data.errors ? `, ${data.errors} errors` : ''}`)
       }
     } catch (e: unknown) {
-      setLogoMessage(`Erreur : ${(e as Error).message}`)
+      setLogoMessage(`Error: ${(e as Error).message}`)
     } finally {
       setLogoSyncing(false)
     }
@@ -97,12 +97,12 @@ export function AutomationAdmin({ syncLogs, storeLogs, stats }: Props) {
         const results: NetworkSyncResult[] = json.results
         setLastResults(results)
         const totals = results.reduce((a, r) => ({ added: a.added + r.added, deactivated: a.deactivated + r.deactivated }), { added: 0, deactivated: 0 })
-        setMessage(`✓ Sync terminée : ${totals.added} ajoutés, ${totals.deactivated} désactivés`)
+        setMessage(`✓ Sync complete: ${totals.added} added, ${totals.deactivated} deactivated`)
       } else {
-        setMessage(`Erreur : ${json.error ?? 'inconnue'}`)
+        setMessage(`Error: ${json.error ?? 'unknown'}`)
       }
     } catch {
-      setMessage('Erreur réseau lors du déclenchement.')
+      setMessage('Network error during sync trigger.')
     } finally {
       setSyncing(false); setNetworkSyncing(null)
     }
@@ -362,7 +362,7 @@ function SyncCard({ title, icon: Icon, status, time, detail, duration, schedule 
       <div>
         <p className="text-sm font-medium text-gray-700">{time}</p>
         <p className="text-xs text-gray-500 mt-0.5">{detail}</p>
-        {duration && <p className="text-xs text-gray-400 mt-0.5">Durée: {(duration / 1000).toFixed(1)}s</p>}
+        {duration && <p className="text-xs text-gray-400 mt-0.5">Duration: {(duration / 1000).toFixed(1)}s</p>}
       </div>
       <p className="text-xs text-gray-400 border-t border-gray-100 pt-2">{schedule}</p>
     </div>

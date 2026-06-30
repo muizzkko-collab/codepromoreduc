@@ -60,7 +60,7 @@ export function BlogAdmin({ initialPosts }: Props) {
   }
 
   function handleDelete(id: string) {
-    if (!confirm('Supprimer cet article ?')) return
+    if (!confirm('Delete this article?')) return
     startTransition(async () => {
       const { error } = await deleteBlogPost(id)
       if (!error) setPosts(prev => prev.filter(p => p.id !== id))
@@ -72,7 +72,7 @@ export function BlogAdmin({ initialPosts }: Props) {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-navy">Blog</h1>
         <button onClick={openNew} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90">
-          <Plus className="h-4 w-4" /> Nouvel article
+          <Plus className="h-4 w-4" /> New article
         </button>
       </div>
 
@@ -80,9 +80,9 @@ export function BlogAdmin({ initialPosts }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
             <tr>
-              <th className="px-4 py-3 text-left">Titre</th>
-              <th className="px-4 py-3 text-left hidden md:table-cell">Catégorie</th>
-              <th className="px-4 py-3 text-center">Statut</th>
+              <th className="px-4 py-3 text-left">Title</th>
+              <th className="px-4 py-3 text-left hidden md:table-cell">Category</th>
+              <th className="px-4 py-3 text-center">Status</th>
               <th className="px-4 py-3 text-left hidden lg:table-cell">Date</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -115,7 +115,7 @@ export function BlogAdmin({ initialPosts }: Props) {
             ))}
           </tbody>
         </table>
-        {posts.length === 0 && <p className="text-center text-gray-400 py-8">Aucun article. Créez le premier !</p>}
+        {posts.length === 0 && <p className="text-center text-gray-400 py-8">No articles yet. Create the first one!</p>}
       </div>
 
       {/* Side panel */}
@@ -124,7 +124,7 @@ export function BlogAdmin({ initialPosts }: Props) {
           <div className="flex-1 bg-black/40" onClick={closePanel} />
           <div className="w-full max-w-lg bg-white shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="font-semibold text-navy">{editing.id ? 'Modifier l\'article' : 'Nouvel article'}</h2>
+              <h2 className="font-semibold text-navy">{editing.id ? 'Edit article' : 'New article'}</h2>
               <button onClick={closePanel}><X className="h-5 w-5 text-gray-400" /></button>
             </div>
 
@@ -134,7 +134,7 @@ export function BlogAdmin({ initialPosts }: Props) {
               )}
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Titre *</label>
+                <label className="text-xs font-medium text-gray-600">Title *</label>
                 <input
                   value={editing.title ?? ''}
                   onChange={e => setEditing(p => ({ ...p, title: e.target.value, slug: editing.id ? p.slug : slugify(e.target.value) }))}
@@ -152,7 +152,7 @@ export function BlogAdmin({ initialPosts }: Props) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Extrait</label>
+                <label className="text-xs font-medium text-gray-600">Excerpt</label>
                 <textarea
                   value={editing.excerpt ?? ''}
                   onChange={e => setEditing(p => ({ ...p, excerpt: e.target.value }))}
@@ -162,18 +162,18 @@ export function BlogAdmin({ initialPosts }: Props) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Contenu</label>
+                <label className="text-xs font-medium text-gray-600">Content</label>
                 <textarea
                   value={editing.content ?? ''}
                   onChange={e => setEditing(p => ({ ...p, content: e.target.value }))}
                   rows={10}
                   className="input-base resize-y"
-                  placeholder="Texte ou HTML..."
+                  placeholder="Text or HTML..."
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Image de couverture (URL)</label>
+                <label className="text-xs font-medium text-gray-600">Cover image (URL)</label>
                 <input
                   value={editing.cover_image_url ?? ''}
                   onChange={e => setEditing(p => ({ ...p, cover_image_url: e.target.value }))}
@@ -189,7 +189,7 @@ export function BlogAdmin({ initialPosts }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-600">Auteur</label>
+                  <label className="text-xs font-medium text-gray-600">Author</label>
                   <input value={editing.author ?? ''} onChange={e => setEditing(p => ({ ...p, author: e.target.value }))} className="input-base" />
                 </div>
                 <div className="space-y-1">
@@ -205,12 +205,12 @@ export function BlogAdmin({ initialPosts }: Props) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Tags (séparés par des virgules)</label>
-                <input value={tagsInput} onChange={e => setTagsInput(e.target.value)} className="input-base" placeholder="promo, réduction, économie" />
+                <label className="text-xs font-medium text-gray-600">Tags (comma-separated)</label>
+                <input value={tagsInput} onChange={e => setTagsInput(e.target.value)} className="input-base" placeholder="promo, discount, savings" />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">Date de publication</label>
+                <label className="text-xs font-medium text-gray-600">Publish date</label>
                 <input
                   type="datetime-local"
                   value={editing.published_at ? editing.published_at.slice(0, 16) : ''}
@@ -227,20 +227,20 @@ export function BlogAdmin({ initialPosts }: Props) {
                   className="rounded accent-green-600 w-4 h-4"
                 />
                 <div>
-                  <span className="text-sm font-semibold text-green-800">Publier l&apos;article</span>
-                  <p className="text-xs text-green-600 mt-0.5">L&apos;article sera visible sur le blog</p>
+                  <span className="text-sm font-semibold text-green-800">Publish article</span>
+                  <p className="text-xs text-green-600 mt-0.5">The article will be visible on the blog</p>
                 </div>
               </label>
             </div>
 
             <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
-              <button onClick={closePanel} className="flex-1 border border-gray-200 rounded-lg py-2 text-sm hover:bg-gray-50">Annuler</button>
+              <button onClick={closePanel} className="flex-1 border border-gray-200 rounded-lg py-2 text-sm hover:bg-gray-50">Cancel</button>
               <button
                 onClick={handleSave}
                 disabled={saving || !editing.title || !editing.slug}
                 className="flex-1 bg-primary text-white rounded-lg py-2 text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
-                {saving ? 'Enregistrement...' : 'Enregistrer'}
+                {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>

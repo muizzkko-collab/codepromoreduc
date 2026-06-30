@@ -34,7 +34,7 @@ function CouponTypeIcon({ type }: { type: string }) {
 }
 
 // ── Steps ─────────────────────────────────────────────────────────────────────
-type Step = 'idle' | 'searching' | 'found' | 'generating' | 'preview' | 'publishing' | 'done'
+type Step = 'idle' | 'searching' | 'found' | 'generating' | 'preview' | 'publishing' | 'done' | 'exists'
 
 export function AutoAddAdmin() {
   const { tr } = useLang()
@@ -45,8 +45,9 @@ export function AutoAddAdmin() {
   const [error,     setError]         = useState<string | null>(null)
   const [published, setPublished]     = useState<string | null>(null)
 
-  const [networkStore, setNetworkStore] = useState<NetworkStoreResult | null>(null)
-  const [generated,    setGenerated]    = useState<GenerateResult | null>(null)
+  const [networkStore,  setNetworkStore]  = useState<NetworkStoreResult | null>(null)
+  const [generated,     setGenerated]     = useState<GenerateResult | null>(null)
+  const [existingSlug,  setExistingSlug]  = useState<string | null>(null)
 
   // Editable fields
   const [editMeta, setEditMeta]     = useState('')
@@ -57,7 +58,7 @@ export function AutoAddAdmin() {
   // ── Step 1: search all networks ──────────────────────────────────────────────
   async function handleSearch() {
     if (!storeName.trim()) return
-    setStep('searching'); setError(null); setNetworkStore(null); setGenerated(null)
+    setStep('searching'); setError(null); setNetworkStore(null); setGenerated(null); setExistingSlug(null)
     try {
       const res  = await fetch(`/api/admin/store-search?q=${encodeURIComponent(storeName.trim())}`)
       const json = await res.json()
@@ -126,6 +127,8 @@ export function AutoAddAdmin() {
         ...(generated && !networkStore.coupons.length ? generated.coupons : []),
       ]
 
+      const slugMatch = networkStore.name
+        .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
       const { error: pubErr } = await publishStore({
         name:               networkStore.name,
         source:             networkStore.source,
@@ -137,13 +140,58 @@ export function AutoAddAdmin() {
         contentBody,
         coupons:            allCoupons,
       })
-      if (pubErr) throw new Error(pubErr)
+      if (pubErr) {
+        // Detect duplicate slug — show "already exists" UI instead of generic error
+        if (pubErr.includes('slug existe déjà') || pubErr.includes('already exists') || pubErr.includes('stores_slug_key')) {
+          setExistingSlug(`code-promo-${slugMatch}`)
+          setStep('exists')
+          return
+        }
+        throw new Error(pubErr)
+      }
       setPublished(`/admin/boutiques/?search=${encodeURIComponent(networkStore.name)}`)
       setStep('done')
     } catch (e: unknown) {
       setError((e as Error).message)
       setStep('preview')
     }
+  }
+
+  // ── Store already exists ─────────────────────────────────────────────────────
+  if (step === 'exists' && networkStore) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-6 flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <h2 className="text-lg font-bold text-amber-900">Store already exists</h2>
+              <p className="text-sm text-amber-700 mt-1">
+                <strong>{networkStore.name}</strong> is already in your database
+                {existingSlug ? <> as <code className="bg-amber-100 px-1 rounded">{existingSlug}</code></> : ''}.
+                You cannot add it again — update the existing store instead.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setStep('idle'); setNetworkStore(null); setGenerated(null); setExistingSlug(null) }}
+              className="border border-amber-300 text-amber-800 rounded-lg px-5 py-2.5 text-sm font-semibold hover:bg-amber-100"
+            >
+              Search another store
+            </button>
+            {existingSlug && (
+              <a
+                href={`/admin/boutiques/?search=${encodeURIComponent(networkStore.name)}`}
+                className="flex items-center gap-2 bg-amber-500 text-white rounded-lg px-5 py-2.5 text-sm font-semibold hover:bg-amber-600"
+              >
+                <ExternalLink className="h-4 w-4" /> Open existing store
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // ── Published ────────────────────────────────────────────────────────────────
@@ -153,7 +201,7 @@ export function AutoAddAdmin() {
         <CheckCircle className="h-16 w-16 text-green-500" />
         <h2 className="text-xl font-bold text-navy">Boutique publiée !</h2>
         <p className="text-sm text-gray-500 text-center">
-          Contenu IA enregistré en statut <strong>Draft</strong> — vous pouvez le réviser depuis la fiche boutique.
+          AI content saved as <strong>Draft</strong> — you can review and approve it from the store admin page.
         </p>
         <div className="flex gap-3">
           <a href={published} className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90">
@@ -161,7 +209,7 @@ export function AutoAddAdmin() {
           </a>
           <button onClick={() => { setStep('idle'); setStoreName(''); setNetworkStore(null); setGenerated(null); setPublished(null) }}
             className="px-6 py-2.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
-            Ajouter une autre
+            Add another store
           </button>
         </div>
       </div>
@@ -177,8 +225,8 @@ export function AutoAddAdmin() {
       {/* ── Search ─────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <p className="text-xs text-gray-500">
-          Recherche sur <strong>tous les réseaux</strong> : Awin, Kwanko, Effiliation, Tradedoubler.
-          Si introuvable, le crawler IA collecte les codes promo et rédige le contenu automatiquement.
+          Searches <strong>all affiliate networks</strong>: Awin, Kwanko, Effiliation, Tradedoubler.
+          If not found, the AI crawler collects promo codes and writes the store content automatically.
         </p>
 
         <div className="flex gap-3">
@@ -209,7 +257,7 @@ export function AutoAddAdmin() {
           <button type="button" onClick={() => fileRef.current?.click()}
             className="flex items-center gap-2 text-xs border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 text-gray-600">
             <Upload className="h-3.5 w-3.5" />
-            {logoFile ? logoFile.name : 'Logo personnalisé (optionnel)'}
+            {logoFile ? logoFile.name : 'Custom logo (optional)'}
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden"
             onChange={e => setLogoFile(e.target.files?.[0] ?? null)} />
@@ -229,7 +277,7 @@ export function AutoAddAdmin() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex items-center gap-3">
           <Loader2 className="h-5 w-5 text-blue-500 animate-spin shrink-0" />
           <div>
-            <p className="font-semibold text-blue-800 text-sm">Recherche sur tous les réseaux affiliés…</p>
+            <p className="font-semibold text-blue-800 text-sm">Searching all affiliate networks…</p>
             <p className="text-xs text-blue-600 mt-0.5">Awin · Kwanko · Effiliation · Tradedoubler</p>
           </div>
         </div>
@@ -241,13 +289,13 @@ export function AutoAddAdmin() {
           <div>
             <p className="font-semibold text-purple-800 text-sm">
               {networkStore.found
-                ? `Génération du contenu IA pour ${networkStore.name}…`
-                : `Boutique introuvable dans les réseaux — crawl des sites concurrents en cours…`}
+                ? `Generating AI content for ${networkStore.name}…`
+                : `Not found in any network — crawling competitor sites…`}
             </p>
             <p className="text-xs text-purple-600 mt-0.5">
               {networkStore.found
-                ? 'Rédaction SEO, FAQ, liens internes…'
-                : 'Firecrawl · Claude · Rédaction contenu (30-90 s)'}
+                ? 'Writing SEO description, FAQ, internal links…'
+                : 'Firecrawl · Claude · Content writing (30–90 s)'}
             </p>
           </div>
         </div>
@@ -279,8 +327,8 @@ export function AutoAddAdmin() {
               </div>
               <p className="text-sm text-gray-500 mt-0.5">
                 {networkStore.found
-                  ? `${networkStore.coupons.length} offre(s) récupérée(s) depuis ${networkStore.source}`
-                  : 'Non trouvé dans les réseaux — contenu généré par crawler IA'}
+                  ? `${networkStore.coupons.length} offer(s) fetched from ${networkStore.source}`
+                  : 'Not found in any network — content will be AI-generated'}
               </p>
               {networkStore.website_url && (
                 <a href={networkStore.website_url} target="_blank" rel="noopener noreferrer"
@@ -295,7 +343,7 @@ export function AutoAddAdmin() {
           {networkStore.coupons.length > 0 && (
             <div className="border-b border-gray-100">
               <p className="px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
-                Codes & Offres ({networkStore.coupons.length})
+                Codes & Offers ({networkStore.coupons.length})
               </p>
               {networkStore.coupons.slice(0, 5).map((c, i) => (
                 <div key={i} className="px-5 py-2.5 border-b border-gray-50 flex items-center gap-3">
@@ -310,7 +358,7 @@ export function AutoAddAdmin() {
                 </div>
               ))}
               {networkStore.coupons.length > 5 && (
-                <p className="px-5 py-2 text-xs text-gray-400">+{networkStore.coupons.length - 5} autres offres</p>
+                <p className="px-5 py-2 text-xs text-gray-400">+{networkStore.coupons.length - 5} more offers</p>
               )}
             </div>
           )}
@@ -322,15 +370,15 @@ export function AutoAddAdmin() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-3 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-semibold text-purple-800">Contenu généré par Claude</span>
-            <span className="text-xs text-purple-500 ml-auto">Modifiable avant publication</span>
+            <span className="text-sm font-semibold text-purple-800">Content generated by Claude</span>
+            <span className="text-xs text-purple-500 ml-auto">Editable before publishing</span>
           </div>
 
           {/* AI-generated coupons (scraper mode only) */}
           {!networkStore?.found && generated.coupons.length > 0 && (
             <div className="border-b border-gray-100">
               <p className="px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide bg-gray-50">
-                Offres extraites par IA ({generated.coupons.length})
+                AI-extracted offers ({generated.coupons.length})
               </p>
               {generated.coupons.slice(0, 5).map((c, i) => (
                 <div key={i} className="px-5 py-2.5 border-b border-gray-50 flex items-center gap-3">
@@ -348,7 +396,7 @@ export function AutoAddAdmin() {
           <div className="p-5 space-y-4">
             {/* Meta description */}
             <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1 block">Meta Description</label>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Meta Description (SEO)</label>
               <textarea
                 value={editMeta}
                 onChange={e => setEditMeta(e.target.value)}
@@ -361,7 +409,7 @@ export function AutoAddAdmin() {
 
             {/* Description */}
             <div>
-              <label className="text-xs font-semibold text-gray-600 mb-1 block">Description principale</label>
+              <label className="text-xs font-semibold text-gray-600 mb-1 block">Main description</label>
               <textarea
                 value={editDesc}
                 onChange={e => setEditDesc(e.target.value)}
@@ -373,7 +421,7 @@ export function AutoAddAdmin() {
             {/* H2 sections preview */}
             {generated.content_body.h2_sections.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-600 mb-2">Sections H2 ({generated.content_body.h2_sections.length})</p>
+                <p className="text-xs font-semibold text-gray-600 mb-2">H2 Sections ({generated.content_body.h2_sections.length})</p>
                 <div className="space-y-2">
                   {generated.content_body.h2_sections.map((s, i) => (
                     <div key={i} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
@@ -403,7 +451,7 @@ export function AutoAddAdmin() {
             {/* Internal links */}
             {generated.content_body.internal_link_mentions.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-600 mb-1">Liens internes générés</p>
+                <p className="text-xs font-semibold text-gray-600 mb-1">Generated internal links</p>
                 <div className="flex flex-wrap gap-1.5">
                   {generated.content_body.internal_link_mentions.map((l, i) => (
                     <span key={i} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">{l}</span>
@@ -430,7 +478,7 @@ export function AutoAddAdmin() {
               onClick={() => handleGenerate(networkStore)}
               className="flex items-center gap-2 border border-purple-300 text-purple-700 rounded-lg px-5 py-2.5 text-sm font-semibold hover:bg-purple-50"
             >
-              <Sparkles className="h-4 w-4" /> Générer le contenu IA
+              <Sparkles className="h-4 w-4" /> Generate AI content
             </button>
           )}
           <button
@@ -439,7 +487,7 @@ export function AutoAddAdmin() {
             className="flex-1 bg-green-600 text-white rounded-lg py-2.5 text-sm font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {step === 'publishing'
-              ? <><Loader2 className="h-4 w-4 animate-spin" /> Publication…</>
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Publishing…</>
               : <><CheckCircle className="h-4 w-4" /> {tr.publishConfirm}</>
             }
           </button>
