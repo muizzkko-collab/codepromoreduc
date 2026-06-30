@@ -220,7 +220,8 @@ export default async function DailyDealsPage() {
                         </p>
                       )}
                       <CouponRevealButton
-                        couponId={coupon.id} couponCode={coupon.code} couponTitle={coupon.title}
+                        couponId={coupon.id} publicId={coupon.wp_post_id ?? null}
+                        couponCode={coupon.code} couponTitle={coupon.title}
                         discountValue={coupon.discount_value ?? ""}
                         couponType={(coupon.type as "code" | "deal" | "free_shipping") ?? "code"}
                         storeLogoUrl={coupon.store?.logo_url ?? null} storeName={coupon.store?.name ?? ""} storeSlug={coupon.store?.slug}
@@ -255,7 +256,8 @@ export default async function DailyDealsPage() {
                         </p>
                       )}
                       <CouponRevealButton
-                        couponId={deal.id} couponCode={null} couponTitle={deal.title}
+                        couponId={deal.id} publicId={deal.wp_post_id ?? null}
+                        couponCode={null} couponTitle={deal.title}
                         discountValue={deal.discount_value ?? ""} couponType="deal"
                         storeLogoUrl={deal.store?.logo_url ?? null} storeName={deal.store?.name ?? ""} storeSlug={deal.store?.slug}
                         affiliateUrl={resolveAffiliateUrl(deal.destination_url, deal.store?.affiliate_url, deal.store?.slug ?? "")}

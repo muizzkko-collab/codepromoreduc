@@ -3,6 +3,7 @@ import { ChevronRight, Zap } from 'lucide-react'
 
 interface Props {
   couponId: string
+  publicId?: number | null
   couponCode: string | null
   couponTitle: string
   discountValue: string
@@ -19,32 +20,36 @@ interface Props {
 }
 
 export function CouponRevealButton({
-  couponId, couponCode, couponTitle, discountValue, couponType,
+  couponId, publicId, couponCode, couponTitle, discountValue, couponType,
   storeLogoUrl, storeName, storeSlug, popupBannerUrl, affiliateUrl, expiryDate,
   featured = false, variant = 'homepage',
 }: Props) {
   const hasCode = couponType === 'code' && !!couponCode
 
   const handleActivate = () => {
-    const params = new URLSearchParams({
-      code:      couponCode  ?? '',
-      title:     couponTitle ?? '',
-      discount:  discountValue ?? '',
-      store:     storeName ?? '',
-      slug:      storeSlug ?? '',
-      logo:      storeLogoUrl ?? '',
-      banner:    popupBannerUrl ?? '',
-      expiry:    expiryDate ?? '',
-      affiliate: affiliateUrl ?? '',
-      type:      couponType,
-      from:      window.location.pathname,
-    })
+    let revealUrl: string
+    if (publicId && storeSlug) {
+      revealUrl = `/store/${storeSlug}/${publicId}/`
+    } else {
+      // Fallback for coupons without publicId (should not happen after migration)
+      const params = new URLSearchParams({
+        code:      couponCode  ?? '',
+        title:     couponTitle ?? '',
+        discount:  discountValue ?? '',
+        store:     storeName ?? '',
+        slug:      storeSlug ?? '',
+        logo:      storeLogoUrl ?? '',
+        banner:    popupBannerUrl ?? '',
+        expiry:    expiryDate ?? '',
+        affiliate: affiliateUrl ?? '',
+        type:      couponType,
+        from:      window.location.pathname,
+      })
+      revealUrl = `/fr/coupon-reveal?${params.toString()}`
+    }
 
-    // 1 — Open popup page in new tab and focus it (unique name = always a fresh tab)
-    const popup = window.open(
-      `/fr/coupon-reveal?${params.toString()}`,
-      `coupon_reveal_${couponId}_${Date.now()}`
-    )
+    // 1 — Open reveal page in new tab and focus it
+    const popup = window.open(revealUrl, `coupon_reveal_${couponId}_${Date.now()}`)
     if (popup) popup.focus()
 
     // 2 — Current tab navigates to affiliate (becomes merchant tab in background)

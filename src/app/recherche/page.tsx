@@ -87,6 +87,8 @@ export default async function SearchPage({ searchParams }: Props) {
                     key={c.id}
                     couponId={c.id}
                     storeId={c.store_id}
+                    publicId={(c as unknown as { wp_post_id?: number | null }).wp_post_id ?? null}
+                    storeSlug={c.store?.slug ?? null}
                     couponCode={c.code ?? null}
                     couponTitle={c.title}
                     discountValue={c.discount_value ?? ''}

@@ -49,6 +49,7 @@ export interface Category {
 export interface Coupon {
   id: string
   wp_post_id: number
+  public_id: number
   store_id: string
   title: string
   slug: string | null

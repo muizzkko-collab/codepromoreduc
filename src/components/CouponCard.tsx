@@ -1,11 +1,13 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { ChevronRight, Zap } from 'lucide-react'
 import { CouponPopup } from './CouponPopup'
 
 export interface CouponCardProps {
   couponId: string
   storeId: string
+  publicId?: number | null
+  storeSlug?: string | null
   couponCode: string | null
   couponTitle: string
   discountValue: string
@@ -28,32 +30,45 @@ function trackClick(couponId: string, storeId: string) {
 }
 
 export function CouponCard({
-  couponId, storeId, couponCode, couponTitle, discountValue, couponType,
+  couponId, storeId, publicId, storeSlug, couponCode, couponTitle, discountValue, couponType,
   storeLogoUrl, storeName, affiliateUrl, expiryDate, terms,
   featured = false, variant = 'homepage',
 }: CouponCardProps) {
   const [popupOpen, setPopupOpen] = useState(false)
-  const bgTabRef = useRef<Window | null>(null)
-  const hasCode = couponType === 'code' && !!couponCode
+  const bgTabRef  = useRef<Window | null>(null)
+  const origPath  = useRef<string>('')
+  const hasCode   = couponType === 'code' && !!couponCode
 
-  const handleActivate = () => {
+  const handleActivate = useCallback(() => {
     // 1 — Show popup on current tab immediately
+    origPath.current = window.location.pathname
     setPopupOpen(true)
 
-    // 2 — Open affiliate in background: open then instantly steal focus back
-    bgTabRef.current = window.open(affiliateUrl, '_blank')
-    if (bgTabRef.current) {
-      bgTabRef.current.blur()
+    // 2 — Push shareable coupon URL so back/share works
+    if (publicId && storeSlug) {
+      window.history.pushState({}, '', `/store/${storeSlug}/${publicId}/`)
     }
+
+    // 3 — Open affiliate in background: open then instantly steal focus back
+    bgTabRef.current = window.open(affiliateUrl, '_blank')
+    if (bgTabRef.current) bgTabRef.current.blur()
     window.focus()
 
-    // 3 — Track async, never blocks UI
+    // 4 — Track async, never blocks UI
     trackClick(couponId, storeId)
-  }
+  }, [couponId, storeId, publicId, storeSlug, affiliateUrl])
+
+  const handleClose = useCallback(() => {
+    setPopupOpen(false)
+    // Restore original URL if we pushed the coupon URL
+    if (origPath.current && window.location.pathname !== origPath.current) {
+      window.history.replaceState({}, '', origPath.current)
+    }
+  }, [])
 
   const popup = (
     <CouponPopup
-      isOpen={popupOpen} onClose={() => setPopupOpen(false)}
+      isOpen={popupOpen} onClose={handleClose}
       couponCode={couponCode} couponTitle={couponTitle}
       discountValue={discountValue} couponType={couponType}
       storeLogoUrl={storeLogoUrl} storeName={storeName}

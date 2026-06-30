@@ -331,6 +331,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners
                         <div className="coupon-right">
                           <CouponRevealButton
                             couponId={coupon.id}
+                            publicId={coupon.wp_post_id ?? null}
                             couponCode={coupon.code ?? null}
                             couponTitle={coupon.title}
                             discountValue={extractDiscount(coupon)}
@@ -512,6 +513,7 @@ export function StorePageClient({ store, coupons, similarCoupons, sidebarBanners
                           {/* CTA */}
                           <CouponRevealButton
                             couponId={c.id}
+                            publicId={(c as { wp_post_id?: number | null }).wp_post_id ?? null}
                             couponCode={c.code ?? null}
                             couponTitle={c.title}
                             discountValue={c.discount_value ?? ''}

@@ -83,7 +83,7 @@ export default async function StorePage({ params }: Props) {
   const categoryIds = (storeCatData ?? []).map(sc => sc.category_id)
 
   interface SimilarCoupon {
-    id: string; title: string; code: string | null; discount_value: string | null
+    id: string; wp_post_id: number | null; title: string; code: string | null; discount_value: string | null
     expiry_date: string | null; store_id: string; is_featured: boolean | null
     store: { name: string; slug: string; logo_url: string | null; affiliate_url: string | null } | null
   }
@@ -101,7 +101,7 @@ export default async function StorePage({ params }: Props) {
       // Fetch up to 80 candidates, one per store, featuring top coupon
       const { data: simCoupons } = await supabase
         .from('coupons')
-        .select('id, title, code, discount_value, expiry_date, store_id, is_featured, store:stores(name,slug,logo_url,affiliate_url)')
+        .select('id, wp_post_id, title, code, discount_value, expiry_date, store_id, is_featured, store:stores(name,slug,logo_url,affiliate_url)')
         .in('store_id', storeIds)
         .eq('is_active', true)
         .or(`expiry_date.is.null,expiry_date.gte.${today}`)

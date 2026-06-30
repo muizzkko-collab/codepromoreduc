@@ -1,131 +1,113 @@
-import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
-import { CouponCard } from '@/components/CouponCard'
-import { StoreLogo } from '@/components/StoreLogo'
-import { Breadcrumb, breadcrumbJsonLd } from '@/components/Breadcrumb'
-import { Store, Coupon } from '@/lib/types'
+import { createClient }   from '@/lib/supabase/server'
+import { notFound, redirect } from 'next/navigation'
 import { getSiteUrl, getCurrentMonthYear, hasCode } from '@/lib/utils'
+import { breadcrumbJsonLd } from '@/components/Breadcrumb'
 import type { Metadata } from 'next'
-import Link from 'next/link'
+import type { Store } from '@/lib/types'
+import { CouponRevealClient } from './CouponRevealClient'
 
 interface Props { params: Promise<{ slug: string; id: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, id } = await params
   const supabase = await createClient()
-  const { data: coupon } = await supabase.from('coupons')
-    .select('title,discount_value,store:stores(name,slug)')
-    .eq('wp_post_id', parseInt(id)).single()
+  const { data: coupon } = await supabase
+    .from('coupons')
+    .select('title, discount_value, store:stores(name, slug)')
+    .eq('public_id', parseInt(id))
+    .single()
   if (!coupon) return {}
-  const store = coupon.store as unknown as { name: string; slug: string }
-  const monthYear = getCurrentMonthYear()
-  const disc = coupon.discount_value ? `${coupon.discount_value} ` : ''
-  const title = `${disc}chez ${store.name} — Code Promo ${monthYear}`
+  const store  = coupon.store as unknown as { name: string; slug: string }
+  const disc   = coupon.discount_value ? `${coupon.discount_value} ` : ''
+  const month  = getCurrentMonthYear()
   return {
-    title,
+    title:       `${disc}chez ${store.name} — Code Promo ${month}`,
     description: `${coupon.title} — Profitez de cette offre chez ${store.name} avec codepromoreduc.fr`,
-    alternates: { canonical: `${getSiteUrl()}/store/${slug}/${id}/` },
+    alternates:  { canonical: `${getSiteUrl()}/store/${slug}/${id}/` },
+    robots:      { index: true, follow: true },
   }
 }
 
-export default async function CouponPage({ params }: Props) {
+export default async function CouponRevealPage({ params }: Props) {
   const { slug, id } = await params
+  const publicId     = parseInt(id)
+  if (isNaN(publicId)) notFound()
+
   const supabase = await createClient()
-  const today = new Date().toISOString().split('T')[0]
 
-  const { data: store } = await supabase.from('stores').select('*').eq('slug', slug).single()
-  if (!store) notFound()
-
-  const { data: coupon } = await supabase.from('coupons')
-    .select('*')
-    .eq('wp_post_id', parseInt(id))
-    .eq('store_id', store.id)
+  const { data: coupon } = await supabase
+    .from('coupons')
+    .select('*, store:stores(*)')
+    .eq('public_id', publicId)
     .single()
+
   if (!coupon) notFound()
 
-  const { data: relatedData } = await supabase.from('coupons')
-    .select('*')
-    .eq('store_id', store.id)
-    .eq('is_active', true)
-    .neq('id', coupon.id)
-    .or(`expiry_date.is.null,expiry_date.gte.${today}`)
-    .limit(4)
-  const related = (relatedData ?? []) as Coupon[]
+  const store = coupon.store as unknown as Store
+  // Canonical slug redirect (e.g. old WordPress URL had different slug)
+  if (store.slug !== slug) redirect(`/store/${store.slug}/${id}/`)
+
+  // Fetch similar stores (server-side, no client round-trip)
+  const { data: catData } = await supabase
+    .from('store_categories').select('category_id').eq('store_id', store.id).limit(5)
+  const catIds = (catData ?? []).map(r => r.category_id)
+
+  let similarStores: { name: string; slug: string; logo_url: string | null }[] = []
+  if (catIds.length > 0) {
+    const { data: scData } = await supabase
+      .from('store_categories').select('store_id')
+      .in('category_id', catIds).neq('store_id', store.id).limit(40)
+    const storeIds = [...new Set((scData ?? []).map(r => r.store_id))].slice(0, 20)
+    if (storeIds.length > 0) {
+      const { data: sData } = await supabase
+        .from('stores').select('name, slug, logo_url')
+        .in('id', storeIds).eq('is_active', true).limit(8)
+      similarStores = (sData ?? []) as typeof similarStores
+    }
+  }
+
+  const couponTyped  = coupon as unknown as import('@/lib/types').Coupon & { store: import('@/lib/types').Store }
+  const affiliateUrl = couponTyped.destination_url || store.affiliate_url || `/store/${slug}/`
 
   const siteUrl = getSiteUrl()
-  const crumbs = [
-    { label: 'Accueil', href: '/' },
-    { label: store.name, href: `/store/${slug}/` },
-    { label: coupon.title.slice(0, 40) },
-  ]
-
   const offerJsonLd = {
     '@context': 'https://schema.org',
-    '@type': hasCode(coupon) ? 'DiscountCode' : 'Offer',
-    name: coupon.title,
-    description: coupon.title,
-    seller: { '@type': 'Organization', name: store.name },
-    ...(coupon.discount_value ? { discount: coupon.discount_value } : {}),
-    ...(hasCode(coupon) ? { code: coupon.code } : {}),
-    ...(coupon.expiry_date ? { validThrough: coupon.expiry_date } : {}),
-    ...(coupon.destination_url ? { url: coupon.destination_url } : {}),
+    '@type':    hasCode(couponTyped) ? 'DiscountCode' : 'Offer',
+    name:       couponTyped.title,
+    description: couponTyped.title,
+    seller:     { '@type': 'Organization', name: store.name, url: `${siteUrl}/store/${slug}/` },
+    ...(couponTyped.discount_value ? { discount: couponTyped.discount_value } : {}),
+    ...(hasCode(couponTyped) && couponTyped.code ? { code: couponTyped.code } : {}),
+    ...(couponTyped.expiry_date ? { validThrough: couponTyped.expiry_date } : {}),
+    url: `${siteUrl}/store/${slug}/${id}/`,
   }
+
+  const breadcrumbLd = breadcrumbJsonLd([
+    { label: 'Accueil', href: '/' },
+    { label: store.name, href: `/store/${slug}/` },
+    { label: coupon.title.slice(0, 50) },
+  ], siteUrl)
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs, siteUrl)) }} />
+      <script type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(offerJsonLd) }} />
+      <script type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Breadcrumb crumbs={crumbs} />
-
-        <div className="mt-6 flex items-center gap-4">
-          <StoreLogo src={store.logo_url} name={store.name} size="sm" />
-          <Link href={`/store/${slug}/`} className="font-semibold text-navy hover:text-primary transition-colors">
-            {store.name}
-          </Link>
-        </div>
-
-        <div className="mt-6 max-w-md">
-          <CouponCard
-            couponId={(coupon as Coupon).id}
-            storeId={(store as Store).id}
-            couponCode={(coupon as Coupon).code ?? null}
-            couponTitle={(coupon as Coupon).title}
-            discountValue={(coupon as Coupon).discount_value ?? ''}
-            couponType={(coupon as Coupon).code ? 'code' : 'deal'}
-            storeLogoUrl={(store as Store).logo_url ?? null}
-            storeName={(store as Store).name}
-            affiliateUrl={(coupon as unknown as { destination_url?: string }).destination_url || (store as Store).affiliate_url || '/'}
-            expiryDate={(coupon as Coupon).expiry_date ?? null}
-            variant="homepage"
-          />
-        </div>
-
-        {related.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-xl font-bold text-navy mb-4">Autres offres {store.name}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {related.map(c => (
-                <CouponCard
-                  key={c.id}
-                  couponId={c.id}
-                  storeId={(store as Store).id}
-                  couponCode={c.code ?? null}
-                  couponTitle={c.title}
-                  discountValue={c.discount_value ?? ''}
-                  couponType={c.code ? 'code' : 'deal'}
-                  storeLogoUrl={(store as Store).logo_url ?? null}
-                  storeName={(store as Store).name}
-                  affiliateUrl={(c as unknown as { destination_url?: string }).destination_url || (store as Store).affiliate_url || '/'}
-                  expiryDate={c.expiry_date ?? null}
-                  variant="homepage"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      <CouponRevealClient
+        couponCode={couponTyped.code ?? null}
+        couponTitle={couponTyped.title}
+        discountValue={couponTyped.discount_value ?? null}
+        couponType={(couponTyped.type ?? 'deal') as 'code' | 'deal' | 'free_shipping'}
+        storeName={store.name}
+        storeSlug={slug}
+        logoUrl={store.logo_url ?? null}
+        bannerUrl={store.popup_banner_url ?? null}
+        affiliateUrl={affiliateUrl}
+        expiryDate={couponTyped.expiry_date ?? null}
+        similarStores={similarStores}
+      />
     </>
   )
 }
